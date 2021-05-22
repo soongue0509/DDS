@@ -1,3 +1,4 @@
+#' @export
 
 # Average Rolling Return
 
