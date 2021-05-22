@@ -23,7 +23,8 @@ rollret = function(ssl, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 5
     result = bind_rows(result,temp)
   }
 
-  return(result)
+  final = result %>% summarise(return = mean(roll_avg), return_min = mean(roll_min), return_sd = mean(roll_sd))
+  return(final)
 
 }
 
@@ -54,7 +55,7 @@ rollret_mix = function(index, target, top_n = 10, roll_period = 6, ensemble_n = 
       mutate(wt = (as.numeric(gsub('V','',variable))-1)/10) %>% select(-variable) %>% rename(pred = value)
     mix %<>% as.data.table
     mix =
-      mix %>% group_by(date,wt) %>% arrange(desc(pred)) %>% slice(1:top_n) %>%
+      mix %>% group_by(date,wt) %>% arrange(desc(pred)) %>% dplyr::slice(1:top_n) %>%
       summarise(ret = mean(target_1m_return)+1,.groups = 'keep') %>%
       group_by(wt) %>% arrange(date) %>%
       mutate(ret_roll = rollapply(ret,roll_period,prod, align = 'right', fill = NA)) %>%
