@@ -60,7 +60,8 @@ rollret_mix = function(index, target, top_n = 10, roll_period = 6, ensemble_n = 
       group_by(wt) %>% arrange(date) %>%
       mutate(ret_roll = rollapply(ret,roll_period,prod, align = 'right', fill = NA)) %>%
       summarise(roll_avg = mean(ret_roll, na.rm = T),
-                roll_min = min(ret_roll , na.rm = T), .groups = 'keep')
+                roll_min = min(ret_roll , na.rm = T),
+                roll_sd = sd(ret_roll, na.rm = T), .groups = 'keep')
 
     best_wt = mix %>% filter(roll_avg == max(roll_avg)) %>% pull(wt)
     mix =
@@ -74,10 +75,10 @@ rollret_mix = function(index, target, top_n = 10, roll_period = 6, ensemble_n = 
 
   baselines = result %>% filter(option %in% c('target','index')) %>% group_by(option) %>% summarise_all(mean)
   mixed = result %>% filter(option %in% c('best')) %>% group_by(option) %>% summarise_all(mean)
-  max_freq = result %>% filter(option %in% c('best')) %>% group_by(wt) %>% count() %>% ungroup() %>% arrange(desc(wt)) %>%filter(n == max(n)) %>% dplyr::slice(1) %>% pull(wt)
   ratio_sd = result %>% filter(option %in% c('best')) %>% pull(wt) %>% sd
-  mixed %<>% mutate(max_freq = max_freq, ratio_sd = ratio_sd)
+  mixed %<>% mutate(weight_sd = ratio_sd)
   final = bind_rows(baselines, mixed)
+  final %<>% rename(weight = wt, return = roll_avg, return_min = roll_min)
 
   return(final)
 

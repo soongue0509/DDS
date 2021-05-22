@@ -34,5 +34,6 @@ Imports:
   remotes,
   lightgbm,
   zoo,
-  purrr
+  purrr,
+  reshape2
   
