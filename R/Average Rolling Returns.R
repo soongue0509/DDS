@@ -1,7 +1,7 @@
-#' @export
 
 # Average Rolling Return
 
+#' @export
 rollret = function(ssl, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 50, seed = 0){
 
   set.seed(seed)
@@ -29,8 +29,10 @@ rollret = function(ssl, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 5
 
 }
 
+
 # Average Rolling Return + Mixing Targets
 
+#' @export
 rollret_mix = function(index, target, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 50, seed = 0){
 
   set.seed(seed)
