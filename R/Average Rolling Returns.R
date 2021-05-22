@@ -9,7 +9,6 @@ rollret = function(ssl, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 5
   for( iter in 1:boot_n){
 
     ref = ssl %>% select(date,stock_cd,target_1m_return)
-    set.seed(1)
     cols = sample(3:302,ensemble_n, replace = T)
     ref[,paste0('pred_mean_',iter)] = rowMeans(ssl[,cols,with=F])
 
