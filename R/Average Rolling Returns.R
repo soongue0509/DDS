@@ -61,13 +61,13 @@ rollret_mix = function(index, target, top_n = 10, roll_period = 6, ensemble_n = 
       mutate(ret_roll = rollapply(ret,roll_period,prod, align = 'right', fill = NA)) %>%
       summarise(roll_avg = mean(ret_roll, na.rm = T),
                 roll_min = min(ret_roll , na.rm = T),
-                roll_sd = sd(ret_roll, na.rm = T), .groups = 'keep')
+                roll_sd = sd(ret_roll, na.rm = T))
 
     best_wt = mix %>% filter(roll_avg == max(roll_avg)) %>% pull(wt)
     mix =
       mix %>% filter(wt %in% c(0,1)) %>% mutate(option = ifelse(wt == 0, 'target', 'index')) %>%
       bind_rows(mix %>% filter(wt %in% c(best_wt - 0.1, best_wt, best_wt + 0.1)) %>%
-                  summarise(roll_avg = mean(roll_avg), roll_min = mean(roll_min)) %>%
+                  summarise(roll_avg = mean(roll_avg), roll_min = mean(roll_min), roll_sd = mean(roll_sd)) %>%
                   mutate(wt = best_wt, option = 'best'))
 
     result = bind_rows(result,mix)

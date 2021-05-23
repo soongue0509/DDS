@@ -35,5 +35,6 @@ Imports:
   lightgbm,
   zoo,
   purrr,
+  ggplot2,
   reshape2
-  
+
