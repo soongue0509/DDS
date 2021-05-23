@@ -102,6 +102,7 @@ modeling_func = function(df, target_y, title = "", train_span=36, push_span=1, e
   for (i in 1:length(selected_stock_cd_list)) {
     ssl <<- rbind(ssl, selected_stock_cd_list[[i]])
   }
+  ssl %<>% left_join(df %>% select(date, stock_cd, target_1m_return), by = c('date', 'stock_cd'))
   saveRDS(ssl, paste0("ssl_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y,"_n", ensemble_n, ".RDS"))
   return(ssl)
 }
