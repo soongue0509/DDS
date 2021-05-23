@@ -35,5 +35,6 @@ Imports:
   zoo,
   purrr,
   ggplot2,
-  reshape2
+  reshape2,
+  stringr
 
