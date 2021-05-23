@@ -9,7 +9,6 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports:
-  lightgbm,
   Matrix,
   Metrics,
   PerformanceAnalytics,
@@ -18,6 +17,7 @@ Imports:
   bigstatsr,
   data.table,
   ggrepel,
+  lightgbm,
   lubridate,
   magrittr,
   pROC,
