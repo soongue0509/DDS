@@ -17,6 +17,7 @@ Imports:
   bigstatsr,
   data.table,
   ggrepel,
+  lightgbm,
   lubridate,
   magrittr,
   pROC,
