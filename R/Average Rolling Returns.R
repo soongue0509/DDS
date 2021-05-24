@@ -48,7 +48,7 @@ rollret_mix = function(index, target, top_n = 10, roll_period = 6, ensemble_n = 
     target_ref[,paste0('pred_mean_',iter)] = rowMeans(target[,target_cols,with=F])
 
     mix = index %>% select(date,stock_cd,target_1m_return)
-    target = index %>% select(date,stock_cd,target_1m_return) %>% left_join(target, by = c('date','stock_cd','target_1m_return'))
+    target = index %>% select(date,stock_cd) %>% left_join(target, by = c('date','stock_cd'))
     mix = cbind(mix, cbind(rowMeans(index[,index_cols,with=F]),rowMeans(target[,target_cols,with=F])) %*%
                   t(cbind(seq(0,1,0.1),1 - seq(0,1,0.1))) %>% as_tibble())
     mix = mix %>% melt(id.vars = c('date', 'stock_cd', 'target_1m_return')) %>%
