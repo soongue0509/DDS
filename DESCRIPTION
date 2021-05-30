@@ -35,5 +35,8 @@ Imports:
   tidyverse,
   tweenr,
   xts,
-  zoo
+  zoo,
+  foreach,
+  parallel,
+  doParallel
 
