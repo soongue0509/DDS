@@ -28,5 +28,6 @@
 #' @importFrom foreach 'foreach' `%dopar%`
 #' @importFrom parallel 'makeCluster' 'stopCluster'
 #' @importFrom doParallel 'registerDoParallel'
-#' @importFrom RMySQL 'MySQL' 'dbConnect' 'dbSendQuery' 'dbGetQuery'
+#' @importFrom RMySQL 'MySQL'
+#' @importFrom DBI 'dbGetQuery' 'dbConnect' 'dbSendQuery'
 NULL
