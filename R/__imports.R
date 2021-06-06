@@ -28,6 +28,4 @@
 #' @importFrom foreach 'foreach' `%dopar%`
 #' @importFrom parallel 'makeCluster' 'stopCluster'
 #' @importFrom doParallel 'registerDoParallel'
-#' @importFrom xgboost 'xgb.DMatrix' 'xgb.train'
-#' @importFrom SHAPforxgboost 'shap.prep'
 NULL
