@@ -2,7 +2,7 @@
 # Prepare Data for Modeling
 
 #' @export
-df_prep_model = function(df, beg_date = '2011-01-01'){
+prep_data = function(df, beg_date = '2011-01-01'){
 
   formatted = df %>%
     as.data.frame() %>%
