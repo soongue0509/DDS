@@ -38,7 +38,4 @@ Imports:
   zoo,
   foreach,
   parallel,
-  doParallel,
-  xgboost,
-  SHAPforxgboost
-
+  doParallel
