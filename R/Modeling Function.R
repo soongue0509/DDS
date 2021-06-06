@@ -48,13 +48,6 @@ modeling_func = function(df, target_y, title = "", train_span=36, push_span=1, e
 
     if(nrow(dt_test) == 0) break
 
-    # Make Matrix
-    lgbm_train_dat <-
-      lgb.Dataset(
-        Matrix(
-          as.matrix(dt_train %>% select(-c(`stock_cd`,`date`, contains('target'), contains('return')))), sparse = TRUE),
-        label = dt_train[,target_y]
-      )
 
     train_y <- dt_train[,target_y]
 
@@ -64,23 +57,44 @@ modeling_func = function(df, target_y, title = "", train_span=36, push_span=1, e
 
     # Start Training
     pred_mat <- matrix(nrow=nrow(dt_test), ncol=ensemble_n)
+    cl = parallel::makeCluster(4)
+    doParallel::registerDoParallel(cl)
+    clusterEvalQ(cl, {
+      library(lightgbm)
+      # no additional packages here
+    })
 
-    for (m in 1:ensemble_n) {
-      lgbm_model <-
-        lightgbm(
-          params = lgbm_params,
-          data = lgbm_train_dat,
-          boosting = "gbdt",
-          nrounds = num_rounds,
-          tree_learner = "voting",
-          verbose = -1,
-          seed = m
-        )
+    pred_mat = foreach(m = 1:ensemble_n,
+                       .packages = c("lightgbm","Matrix","dplyr"),
+                       .combine = cbind) %dopar% {
 
-      # Predict
-      lgbm_pred <- predict(lgbm_model, lgbm_test_dat)
-      pred_mat[,m] <- lgbm_pred
-    }
+                         # Make Matrix
+                         lgbm_train_dat <-
+                           lgb.Dataset(
+                             Matrix(
+                               as.matrix(dt_train %>% select(-c(`stock_cd`,`date`, contains('target'), contains('return')))), sparse = TRUE),
+                             label = dt_train[,target_y]
+                           )
+
+                         lgbm_model <-
+                           lightgbm(
+                             params = lgbm_params,
+                             objective = "binary",
+                             data = lgbm_train_dat,
+                             boosting = "gbdt",
+                             nrounds = num_rounds,
+                             # num_threads = 16,
+                             tree_learner = "voting",
+                             verbose = -1,
+                             seed = m
+                           )
+
+                         # Predict
+                         pred_mat <- predict(lgbm_model, lgbm_test_dat)
+
+                       }
+
+    stopCluster(cl)
 
     colnames(pred_mat) <- paste0('pred', seq(1:ensemble_n))
     pred_mean <- apply(pred_mat, 1, mean)
@@ -136,3 +150,5 @@ modeling_func = function(df, target_y, title = "", train_span=36, push_span=1, e
   saveRDS(shap_test_df, paste0("shap_test_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
   return(ssl)
 }
+
+
