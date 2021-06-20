@@ -11,10 +11,7 @@ RoxygenNote: 7.1.1
 Imports:
   Matrix,
   Metrics,
-  PerformanceAnalytics,
   ROCR,
-  RiskPortfolios,
-  bigstatsr,
   data.table,
   ggrepel,
   lightgbm,
@@ -27,7 +24,6 @@ Imports:
   rBayesianOptimization,
   remotes,
   reshape2,
-  rstatix,
   sna,
   stringr,
   tibble,
