@@ -188,14 +188,14 @@ backtest_portfolio =
         }
 
         # Daily Return
-        daily_rets <-
-          rets_temp %>%
-          select(-date) %>%
-          xts(order.by = rets_temp$date) %>%
-          Return.calculate() %>%
-          na.omit() %>%
-          as.data.frame() %>%
-          rowMeans()
+        daily_rets_temp <-
+          rets_temp %>% 
+          mutate_at(vars(matches("stock")), function(x) {(x-lag(x))/lag(x)}) %>% 
+          mutate(mean_ret = rowMeans(select(., contains("stock")))) %>% 
+          select(date, mean_ret) %>% 
+          na.omit()
+        daily_rets <- daily_rets_temp$mean_ret
+        names(daily_rets) <- daily_rets_temp$date
 
         daily_rets_df <- c(daily_rets_df, daily_rets)
 
