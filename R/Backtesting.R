@@ -6,6 +6,29 @@
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, top_n, pred_col, SN_ratio, seed_money, upper_bound, lower_bound, start_date = '2017-01-01', end_date = '9999-12-31') {
 
+    # 가격 데이터
+    d_stock_price <-
+      stock_db_connection  %>% dbGetQuery("select * from stock_adj_price where date >= '20150101';") %>%
+      mutate(date=ymd(date),
+             stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0'))
+    d_stock_price %<>% select(date, stock_cd, price=adj_close_price)
+    
+    # KOSPI & KOSDAQ
+    d_kospi_kosdaq <-
+      stock_db_connection %>% dbGetQuery("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '20150101';")
+    d_kospi_kosdaq %<>% 
+      mutate(date = ymd(date)) %>% 
+    arrange(date) %>% 
+    mutate(kospi = (kospi-lag(kospi))/lag(kospi),
+           kosdaq = (kosdaq - lag(kosdaq))/lag(kosdaq)) %>% 
+    na.omit() %>% 
+    mutate(kospi = cumprod(kospi+1)-1,
+           kosdaq = cumprod(kosdaq+1)-1)
+    
+    # Sector
+    sector_info = dbGetQuery(stock_db_connection, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
+    sector_info %<>% mutate(date=ymd(date))
+
     if(length(top_n) != length(ssl_list)) {
       stop("top_n length must be equal to ssl_list length")
     }
@@ -222,8 +245,6 @@ backtest_portfolio =
         }
       }
 
-      mdd_vec_wo_corona <- daily_rets_df[as.Date(names(daily_rets_df)) < '2020-03-01' | as.Date(names(daily_rets_df)) > '2020-04-15' ]
-
       model_nm_temp =
         paste0(
           str_pad(l, side='left', width=2, pad='0'), ".",
@@ -235,7 +256,6 @@ backtest_portfolio =
           "Win Ratio: ", round(sum(monthly_win_vec) / length(monthly_win_vec), 2), ", ",
           "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
           "Stability: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec), 2), ", ",
-          "MDD: ", round(maxDrawdown(xts(mdd_vec_wo_corona, order.by=as.Date(names(mdd_vec_wo_corona)))), 2), "] ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2)
         )
 
