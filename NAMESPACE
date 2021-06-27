@@ -3,6 +3,7 @@
 export(backtest_portfolio)
 export(how_many_shares)
 export(modeling_func)
+export(modeling_func2)
 export(prep_data)
 export(rollret)
 export(rollret_mix)
