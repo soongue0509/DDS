@@ -5,7 +5,7 @@
 #' @export
 ssl_join <- function(ssl1, ssl2, ssl1_ratio) {
   ssl_mix <-
-    dplyr::left_join(
+    dplyr::inner_join(
       ssl1 %>% select(date, stock_cd, pred_mean),
       ssl2 %>% select(date, stock_cd, pred_mean),
       by=c("date", "stock_cd")
