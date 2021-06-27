@@ -21,9 +21,7 @@ backtest_portfolio =
     arrange(date) %>% 
     mutate(kospi = (kospi-lag(kospi))/lag(kospi),
            kosdaq = (kosdaq - lag(kosdaq))/lag(kosdaq)) %>% 
-    na.omit() %>% 
-    mutate(kospi = cumprod(kospi+1)-1,
-           kosdaq = cumprod(kosdaq+1)-1)
+    na.omit()
     
     # Sector
     sector_info = dbGetQuery(stock_db_connection, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
