@@ -34,8 +34,8 @@ rollret = function(ssl, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 5
 #' @export
 rollret_mix = function(ssl1, ssl2, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 50, seed = 0, nthread = 2){
   
-  cl <- makeCluster(nthread)
-  registerDoParallel(cl)
+  cl <- parallel::makePSOCKcluster(2)
+  doParallel::registerDoParallel(cl)
   set.seed(seed)
   
   result =
