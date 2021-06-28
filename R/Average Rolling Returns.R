@@ -75,8 +75,6 @@ rollret_mix = function(ssl1, ssl2, top_n = 10, roll_period = 6, ensemble_n = 50,
   mixed %<>% mutate(weight_sd = result %>% filter(option %in% c('best')) %>% pull(wt) %>% sd)
   final = bind_rows(baselines, mixed) %>% rename(weight = wt)
   
-  stopCluster(cl)
-  
   return(final)
   
 }
