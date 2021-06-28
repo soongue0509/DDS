@@ -127,7 +127,9 @@ explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date) {
         dplyr::slice(1:top_N) %>% 
         select(-pred_mean),
       by=c("date", "stock_cd")
-      )
+      ) %>% 
+    left_join(stock_nm, by="stock_cd") %>% 
+    mutate(stock_cd_f = factor(paste0(stock_cd, ' / ', stock_nm)))
   
   plot_df %>% 
     group_by(stock_cd) %>% 
@@ -136,10 +138,10 @@ explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date) {
     arrange(stock_cd, value) %>%
     mutate(order = row_number(),
            shap_sign = ifelse(value > 0, "pos", "neg")) %>%
-    left_join(stock_nm, by="stock_cd") %>% 
+    mutate(stock_cd_f = factor(stock_cd_f, levels = plot_df %>% select(stock_cd_f, pred_mean) %>% unique() %>% arrange(desc(pred_mean)) %>% pull(stock_cd_f))) %>% 
     ggplot(aes(order, value, fill = shap_sign)) +
     geom_bar(stat = "identity", show.legend = FALSE, alpha=0.5) +
-    facet_wrap(~ paste0(stock_cd, ' / ', stock_nm), scales="free_y") +
+    facet_wrap(~ stock_cd_f, scales="free_y") +
     theme_minimal(base_family='NanumGothic') +
     coord_flip() +
     geom_text(
