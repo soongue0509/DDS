@@ -6,6 +6,19 @@
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, top_n, pred_col, SN_ratio, seed_money, upper_bound, lower_bound, start_date = '2017-01-01', end_date = '9999-12-31') {
 
+    library(RMySQL)
+    stock_db_connection <- dbConnect(
+      MySQL(),
+      user = 'betterlife',
+      password = 'snail132',
+      host = 'betterlife.duckdns.org',
+      port = 1231,
+      dbname = 'stock_db'
+    )
+    dbSendQuery(stock_db_connection, "SET NAMES utf8;")
+    dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
+    dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
+    
     # 가격 데이터
     d_stock_price <-
       stock_db_connection  %>% dbGetQuery("select * from stock_adj_price where date >= '20150101';") %>%
