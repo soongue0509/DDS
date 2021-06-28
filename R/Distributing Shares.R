@@ -77,3 +77,76 @@ how_many_shares = function(seed_money, ssl, pred_col, topN, inv_date, view_metho
     View(t(final_result))
   }
 }
+
+# SHAP for chosen stocks
+
+#' @export
+explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date) {
+  
+  stock_db_connection <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231 ,
+    dbname = 'stock_db'
+  )
+  dbSendQuery(stock_db_connection, "SET NAMES utf8;")
+  dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
+  
+  stock_nm = dbGetQuery(stock_db_connection, paste0("select stock_cd, stock_nm from stock_market_sector where date = '", inv_date,"';"))
+  
+  temp1 <-
+    left_join(
+      shap1 %>% select(date, stock_cd, variable, value, rfvalue),
+      ssl1 %>% select(date, stock_cd, pred_mean),
+      by=c("date", "stock_cd")
+    )
+  temp2 <-
+    left_join(
+      shap2 %>% select(date, stock_cd, variable, value, rfvalue),
+      ssl2 %>% select(date, stock_cd, pred_mean),
+      by=c("date", "stock_cd")
+    )
+  
+  temp <- 
+    left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
+    mutate(value = value.x*join_ratio + value.y*(1-join_ratio),
+           rfvalue = rfvalue.x*join_ratio + rfvalue.y*(1-join_ratio),
+           pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
+    select(date, stock_cd, variable, value, rfvalue, pred_mean)
+  
+  plot_df <-
+    temp %>% 
+    inner_join(
+      temp %>% 
+        select(date, stock_cd, pred_mean) %>% 
+        unique() %>% 
+        arrange(desc(pred_mean)) %>% 
+        dplyr::slice(1:top_N) %>% 
+        select(-pred_mean),
+      by=c("date", "stock_cd")
+      )
+  
+  plot_df %>% 
+    group_by(stock_cd) %>% 
+    top_n(6, abs(value)) %>% 
+    ungroup() %>% 
+    arrange(stock_cd, value) %>%
+    mutate(order = row_number(),
+           shap_sign = ifelse(value > 0, "pos", "neg")) %>%
+    left_join(stock_nm, by="stock_cd") %>% 
+    ggplot(aes(order, value, fill = shap_sign)) +
+    geom_bar(stat = "identity", show.legend = FALSE, alpha=0.5) +
+    facet_wrap(~ paste0(stock_cd, ' / ', stock_nm), scales="free_y") +
+    theme_minimal(base_family='NanumGothic') +
+    coord_flip() +
+    geom_text(
+      aes(x=order, y=0, label=paste0(variable," : [",round(rfvalue, 2), "]")), size=3
+    ) +
+    scale_fill_manual(values=c("#E41A1C", "#377EB8")) +
+    theme(axis.text.y = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank())
+}
