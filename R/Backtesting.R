@@ -4,7 +4,7 @@
 
 #' @export
 backtest_portfolio =
-  function(test_title="Portfolio Return", ssl_list, top_n, pred_col, SN_ratio, seed_money, upper_bound, lower_bound, start_date = '2017-01-01', end_date = '9999-12-31') {
+  function(test_title="Portfolio Return", ssl_list, top_n, pred_col, SN_ratio, seed_money, upper_bound, lower_bound, start_date = '20170101', end_date = '99991231') {
 
     library(RMySQL)
     stock_db_connection <- dbConnect(
@@ -18,24 +18,24 @@ backtest_portfolio =
     dbSendQuery(stock_db_connection, "SET NAMES utf8;")
     dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
     dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
-    
+
     # 가격 데이터
     d_stock_price <-
       stock_db_connection  %>% dbGetQuery("select * from stock_adj_price where date >= '20150101';") %>%
       mutate(date=ymd(date),
              stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0'))
     d_stock_price %<>% select(date, stock_cd, price=adj_close_price)
-    
+
     # KOSPI & KOSDAQ
     d_kospi_kosdaq <-
       stock_db_connection %>% dbGetQuery("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '20150101';")
-    d_kospi_kosdaq %<>% 
-      mutate(date = ymd(date)) %>% 
-    arrange(date) %>% 
+    d_kospi_kosdaq %<>%
+      mutate(date = ymd(date)) %>%
+    arrange(date) %>%
     mutate(kospi = (kospi-lag(kospi))/lag(kospi),
-           kosdaq = (kosdaq - lag(kosdaq))/lag(kosdaq)) %>% 
+           kosdaq = (kosdaq - lag(kosdaq))/lag(kosdaq)) %>%
     na.omit()
-    
+
     # Sector
     sector_info = dbGetQuery(stock_db_connection, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
     sector_info %<>% mutate(date=ymd(date))
@@ -76,12 +76,12 @@ backtest_portfolio =
 
     d_kospi_kosdaq_cum <-
       d_kospi_kosdaq %>%
-      filter(date >= start_date) %>%
-      filter(date <= end_date) %>%
+      filter(date >= ymd(start_date)) %>%
+      filter(date <= ymd(end_date)) %>%
       mutate(kospi_cumret = cumprod(kospi+1)-1, kosdaq_cumret = cumprod(kosdaq+1)-1)
 
     for (l in 1:length(ssl_list)) {
-      ssl_list[[l]] <- ssl_list[[l]] %>% mutate(date = ymd(date)) %>% filter(date >= start_date) %>% filter(date <= end_date)
+      ssl_list[[l]] <- ssl_list[[l]] %>% mutate(date = ymd(date)) %>% filter(date >= ymd(start_date)) %>% filter(date <= ymd(end_date))
     }
 
     for (l in 1:length(ssl_list)) {
@@ -121,7 +121,7 @@ backtest_portfolio =
         rets_temp <-
           d_stock_price %>%
           filter(date >= unique(ssl$date)[i]) %>%
-          filter(date <= end_date) %>%
+          filter(date <= ymd(end_date)) %>%
           filter(date <= ifelse(i == length(unique(ssl$date)),
                                 d_stock_price %>%
                                   select(date) %>%
@@ -140,7 +140,7 @@ backtest_portfolio =
         rets_temp <-
           left_join(data.frame(date = d_stock_price %>%
                                  filter(date >= ymd(unique(ssl$date)[i])) %>%
-                                 filter(date <= end_date) %>%
+                                 filter(date <= ymd(end_date)) %>%
                                  filter(date <= ifelse(i == length(unique(ssl$date)),
                                                        d_stock_price %>%
                                                          select(date) %>%
@@ -223,10 +223,10 @@ backtest_portfolio =
 
         # Daily Return
         daily_rets_temp <-
-          rets_temp %>% 
-          mutate_at(vars(matches("stock")), function(x) {(x-lag(x))/lag(x)}) %>% 
-          mutate(mean_ret = rowMeans(select(., contains("stock")))) %>% 
-          select(date, mean_ret) %>% 
+          rets_temp %>%
+          mutate_at(vars(matches("stock")), function(x) {(x-lag(x))/lag(x)}) %>%
+          mutate(mean_ret = rowMeans(select(., contains("stock")))) %>%
+          select(date, mean_ret) %>%
           na.omit()
         daily_rets <- daily_rets_temp$mean_ret
         names(daily_rets) <- daily_rets_temp$date
