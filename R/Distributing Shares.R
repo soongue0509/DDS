@@ -73,8 +73,10 @@ how_many_shares = function(seed_money, ssl, pred_col, topN, inv_date, view_metho
 
   if (view_method == "long") {
     View(final_result)
+    return(final_result)
   } else {
     View(t(final_result))
+    return(t(final_result))
   }
 }
 
