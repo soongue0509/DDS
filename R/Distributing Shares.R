@@ -31,7 +31,7 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
   ssl_temp =
     ssl %>%
     filter(date == max(date)) %>%
-    left_join(sector_info %>% select(stock_cd, stock_nm, sector), by="stock_cd") %>%
+    left_join(sector_info %>% select(stock_cd, stock_nm, sector, market), by="stock_cd") %>%
     group_by(sector) %>%
     arrange(desc(get(pred_col)), .by_group=T) %>%
     dplyr::slice(1:floor(topN*SN_ratio)) %>%
@@ -66,7 +66,7 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
   final_result =
     ssl_temp %>%
     mutate(proportion = paste0(round((cnt_temp*price) / sum(cnt_temp*price) * 100, 2), '%'), amt=price*cnt_temp) %>%
-    select(stock_cd, stock_nm, all_of(pred_col), cnt=cnt_temp, amt, proportion, last_close_price=price)
+    select(stock_cd, stock_nm, market, all_of(pred_col), cnt=cnt_temp, amt, proportion, last_close_price=price)
 
   print("============================================================================")
   print(paste0("Surplus: ", surplus))
