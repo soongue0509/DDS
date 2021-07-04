@@ -22,7 +22,7 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
 
   # Read Data
   sector_info = dbGetQuery(stock_db_connection, paste0("select * from stock_market_sector where date = '", inv_date,"';"))
-  #Encoding(sector_info$stock_nm) = 'UTF-8'; Encoding(sector_info$sector) = 'UTF-8'
+  Encoding(sector_info$stock_nm) = 'UTF-8'; Encoding(sector_info$sector) = 'UTF-8'
 
   d_stock_price_temp <-
     dbGetQuery(stock_db_connection, paste0("select * from stock_adj_price where date = '", inv_date,"';")) %>%
