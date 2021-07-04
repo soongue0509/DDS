@@ -3,7 +3,7 @@
 # How many shares
 
 #' @export
-how_many_shares = function(seed_money, ssl, pred_col, topN, inv_date, view_method, SN_ratio) {
+how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_method="long", SN_ratio=0.3) {
 
   stock_db_connection <- dbConnect(
     MySQL(),
