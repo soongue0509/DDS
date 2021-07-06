@@ -83,7 +83,7 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
 # SHAP for chosen stocks
 
 #' @export
-explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date) {
+explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date, macro_yn=TRUE) {
   
   stock_db_connection <- dbConnect(
     MySQL(),
@@ -112,12 +112,26 @@ explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date) {
       by=c("date", "stock_cd")
     )
   
-  temp <- 
-    left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
-    mutate(value = value.x*join_ratio + value.y*(1-join_ratio),
-           rfvalue = rfvalue.x*join_ratio + rfvalue.y*(1-join_ratio),
-           pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
-    select(date, stock_cd, variable, value, rfvalue, pred_mean)
+  if (macro_yn == TRUE) {
+    temp <- 
+      left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
+      mutate(value = value.x*join_ratio + value.y*(1-join_ratio),
+             rfvalue = rfvalue.x*join_ratio + rfvalue.y*(1-join_ratio),
+             pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
+      select(date, stock_cd, variable, value, rfvalue, pred_mean)
+  } else {
+    feature_list <- read.csv("https://raw.githubusercontent.com/quant-skku/quant_project/master/Feature_Summary.csv?token=AJW5ETKGQZASDLFWF2M7QVTA4P4QQ")
+    temp <- 
+      left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
+      mutate(value = value.x*join_ratio + value.y*(1-join_ratio),
+             rfvalue = rfvalue.x*join_ratio + rfvalue.y*(1-join_ratio),
+             pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
+      select(date, stock_cd, variable, value, rfvalue, pred_mean) %>% 
+      left_join(feature_list %>% filter(category == 'Macro') %>% select(feature, category), by=c("variable"="feature")) %>% 
+      filter(is.na(category)) %>% 
+      filter(!str_detect(variable, "(vix|interest_diff)")) %>% 
+      select(-category)
+    }
   
   plot_df <-
     temp %>% 
@@ -129,7 +143,7 @@ explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date) {
         dplyr::slice(1:top_N) %>% 
         select(-pred_mean),
       by=c("date", "stock_cd")
-      ) %>% 
+    ) %>% 
     left_join(stock_nm, by="stock_cd") %>% 
     mutate(stock_cd_f = factor(paste0(stock_cd, ' / ', stock_nm)))
   
