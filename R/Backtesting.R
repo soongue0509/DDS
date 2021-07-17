@@ -117,6 +117,13 @@ backtest_portfolio =
           group_by(date) %>%
           arrange(desc(get(pred_col[l])), .by_group = TRUE) %>%
           ungroup()
+        
+        ssl_sn <- 
+          ssl %>% 
+          filter(!((date == unique(ssl$date)[i]) & (!stock_cd %in% sector_temp$stock_cd))) %>% 
+          group_by(date) %>% 
+          arrange(desc(get(pred_col[l])), .by_group = TRUE) %>% 
+          ungroup()
 
         rets_temp <-
           d_stock_price %>%
