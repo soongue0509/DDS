@@ -115,16 +115,16 @@ explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date, ma
   if (macro_yn == TRUE) {
     temp <- 
       left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
-      mutate(value = value.x*join_ratio + value.y*(1-join_ratio),
-             rfvalue = rfvalue.x*join_ratio + rfvalue.y*(1-join_ratio),
+      mutate(value = value.x*join_ratio*pred_mean.x + value.y*(1-join_ratio)*pred_mean.y,
+             rfvalue = rfvalue.x,
              pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean)
   } else {
     feature_list <- dbGetQuery(stock_db_connection, "select * from feature_list_20210709")
     temp <- 
       left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
-      mutate(value = value.x*join_ratio + value.y*(1-join_ratio),
-             rfvalue = rfvalue.x*join_ratio + rfvalue.y*(1-join_ratio),
+      mutate(value = value.x*join_ratio*pred_mean.x + value.y*(1-join_ratio)*pred_mean.y,
+             rfvalue = rfvalue.x,
              pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean) %>% 
       left_join(feature_list %>% filter(category == 'Macro') %>% select(feature, category), by=c("variable"="feature")) %>% 
