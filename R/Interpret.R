@@ -1,7 +1,7 @@
 # Interpret Models and Results
 
 #' @export
-return_tile = function(df, ssl_input, pred_col) {
+return_tile = function(df, ssl_input, pred_col, topN) {
 
   if(!"target_1m_return" %in% colnames(ssl_input)){
     stop("target_1m_return must exist in ssl")
@@ -41,7 +41,7 @@ return_tile = function(df, ssl_input, pred_col) {
     group_by(date) %>%
     arrange(desc(get(pred_col)), .by_group = T) %>%
     na.omit() %>%
-    dplyr::slice(1:30) %>%
+    dplyr::slice(1:topN) %>%
     group_by(date) %>%
     summarize(portfolio_return = mean(target_1m_return)) %>%
     left_join(market_updown %>% select(date, kospi, kosdaq, market_avg), by="date")
