@@ -253,9 +253,9 @@ modeling_func = function(df, target_y, title = "", train_span=36, push_span=1, e
     ssl <<- rbind(ssl, selected_stock_cd_list[[i]])
   }
   ssl %<>% left_join(df %>% select(date, stock_cd, target_1m_return), by = c('date', 'stock_cd'))
-  saveRDS(ssl, paste0("ssl_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y,"_n", ensemble_n, ".RDS"))
-  saveRDS(shap_train_df, paste0("shap_train_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
-  saveRDS(shap_test_df, paste0("shap_test_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
+  saveRDS(ssl, paste0("ssl_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y," (n", ensemble_n, ").RDS"))
+  saveRDS(shap_train_df, paste0("trainSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
+  saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
   return(ssl)
 }
 
