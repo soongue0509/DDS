@@ -5,7 +5,36 @@
 #' @export
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, top_n, pred_col, SN_ratio, seed_money, upper_bound, lower_bound, start_date = '20170101', end_date = '99991231', load_data = 'Y') {
+    
+    if(length(top_n) != length(ssl_list)) {
+      stop("top_n length must be equal to ssl_list length")
+    }
+    if(length(pred_col) != length(ssl_list)) {
+      stop("pred_col length must be equal to ssl_list length")
+    }
+    if(length(SN_ratio) != length(ssl_list)) {
+      stop("SN_ratio length must be equal to ssl_list length. If you don't wanted to use this argument, use 1 instead")
+    }
+    if(length(seed_money) != length(ssl_list)) {
+      stop("seed_money length must be equal to ssl_list length. If you don't wanted to use this argument, use NA instead")
+    }
+    if(length(upper_bound) != length(ssl_list)) {
+      stop("upper_bound length must be equal to ssl_list length")
+    }
+    if(length(lower_bound) != length(ssl_list)) {
+      stop("lower_bound length must be equal to ssl_list length")
+    }
 
+    upper_bound[is.na(upper_bound)] = 999999
+    lower_bound[is.na(lower_bound)] = -999999
+
+    if(sum(upper_bound <= 0) > 0) {
+      stop("Upper selling bound must be greater than Zero")
+    }
+    if(sum(lower_bound >= 0) > 0) {
+      stop("Lower selling lower bound must be less than Zero")
+    }
+    
     if(load_data == 'Y') {
       library(RMySQL)
       stock_db_connection <- dbConnect(
@@ -41,36 +70,6 @@ backtest_portfolio =
       sector_info = dbGetQuery(stock_db_connection, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
       sector_info %<>% mutate(date=ymd(date))
     }
-
-    if(length(top_n) != length(ssl_list)) {
-      stop("top_n length must be equal to ssl_list length")
-    }
-    if(length(pred_col) != length(ssl_list)) {
-      stop("pred_col length must be equal to ssl_list length")
-    }
-    if(length(SN_ratio) != length(ssl_list)) {
-      stop("SN_ratio length must be equal to ssl_list length. If you don't wanted to use this argument, use 1 instead")
-    }
-    if(length(seed_money) != length(ssl_list)) {
-      stop("seed_money length must be equal to ssl_list length. If you don't wanted to use this argument, use NA instead")
-    }
-    if(length(upper_bound) != length(ssl_list)) {
-      stop("upper_bound length must be equal to ssl_list length")
-    }
-    if(length(lower_bound) != length(ssl_list)) {
-      stop("lower_bound length must be equal to ssl_list length")
-    }
-
-    upper_bound[is.na(upper_bound)] = 999999
-    lower_bound[is.na(lower_bound)] = -999999
-
-    if(sum(upper_bound <= 0) > 0) {
-      stop("Upper selling bound must be greater than Zero")
-    }
-    if(sum(lower_bound >= 0) > 0) {
-      stop("Lower selling lower bound must be less than Zero")
-    }
-
 
     tic()
 
