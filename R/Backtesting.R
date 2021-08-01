@@ -4,10 +4,10 @@
 
 #' @export
 backtest_portfolio =
-  function(test_title="Portfolio Return", ssl_list, top_n, pred_col, SN_ratio, seed_money, upper_bound, lower_bound, start_date = '20170101', end_date = '99991231', load_price = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, top_n, pred_col, SN_ratio, seed_money, upper_bound, lower_bound, start_date = '20170101', end_date = '99991231', load_data = 'Y') {
 
-    library(RMySQL)
-    if(load_price == 'Y') {
+    if(load_data == 'Y') {
+      library(RMySQL)
       stock_db_connection <- dbConnect(
         MySQL(),
         user = 'betterlife',
@@ -26,21 +26,21 @@ backtest_portfolio =
         mutate(date=ymd(date),
                stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0'))
       d_stock_price %<>% select(date, stock_cd, price=adj_close_price)
+
+      # KOSPI & KOSDAQ
+      d_kospi_kosdaq <-
+        stock_db_connection %>% dbGetQuery("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '20150101';")
+      d_kospi_kosdaq %<>%
+        mutate(date = ymd(date)) %>%
+      arrange(date) %>%
+      mutate(kospi = (kospi-lag(kospi))/lag(kospi),
+             kosdaq = (kosdaq - lag(kosdaq))/lag(kosdaq)) %>%
+      na.omit()
+
+      # Sector
+      sector_info = dbGetQuery(stock_db_connection, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
+      sector_info %<>% mutate(date=ymd(date))
     }
-
-    # KOSPI & KOSDAQ
-    d_kospi_kosdaq <-
-      stock_db_connection %>% dbGetQuery("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '20150101';")
-    d_kospi_kosdaq %<>%
-      mutate(date = ymd(date)) %>%
-    arrange(date) %>%
-    mutate(kospi = (kospi-lag(kospi))/lag(kospi),
-           kosdaq = (kosdaq - lag(kosdaq))/lag(kosdaq)) %>%
-    na.omit()
-
-    # Sector
-    sector_info = dbGetQuery(stock_db_connection, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
-    sector_info %<>% mutate(date=ymd(date))
 
     if(length(top_n) != length(ssl_list)) {
       stop("top_n length must be equal to ssl_list length")
