@@ -2,7 +2,7 @@
 # Return and Save Selected Stock List (SSL)
 
 #' @export
-modeling_func_parallel = function(df, target_y, title = "", train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2017-01-01', explain_yn = 'Y') {
+modeling_func2 = function(df, target_y, title = "", train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2017-01-01', explain_yn = 'Y') {
   
   shap.values <- function(xgb_model,
                           X_train){
