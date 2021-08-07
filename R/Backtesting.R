@@ -259,7 +259,7 @@ backtest_portfolio =
           "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
           "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
           "Stability: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec), 2), ", ",
-          "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2)
+          "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
       
       rets_total <- rbind(rets_total, rets_cum %>% mutate(model_nm = model_nm_temp))
@@ -556,7 +556,7 @@ backtest_portfolio_strict =
           "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
           "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
           "Stability: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec), 2), ", ",
-          "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2)
+          "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
       
       rets_total <- rbind(rets_total, rets_cum %>% mutate(model_nm = model_nm_temp))
