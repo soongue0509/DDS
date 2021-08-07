@@ -143,10 +143,11 @@ backtest_portfolio =
           group_by(date, sector) %>%
           arrange(desc(get(pred_col[l])), .by_group =T) %>%
           dplyr::slice(1:max_stock_per_sector) %>% 
-          ungroup()
+          ungroup() %>% 
+          select(date, stock_cd, sector)
         ssl_sn <-
           ssl %>%
-          inner_join(sector_filtering_df %>% select(-sector), by=c("date", "stock_cd", "pred_mean"))
+          inner_join(sector_filtering_df %>% select(-sector), by=c("date", "stock_cd"))
         
         # Calculate Each Stock Return =====
         
