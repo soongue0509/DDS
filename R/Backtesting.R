@@ -4,7 +4,7 @@
 
 #' @export
 backtest_portfolio =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, include_gj = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, include_issue = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
     
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
@@ -44,11 +44,11 @@ backtest_portfolio =
         stop("weight_list length must be equal to ssl_list length. If you don't wanted to use this argument, use single NA instead")
       }
     }
-    if(is.na(include_gj)) {
-      include_gj = rep('N', length(ssl_list))
+    if(is.na(include_issue)) {
+      include_issue = rep('N', length(ssl_list))
     }
-    if(length(include_gj) != length(ssl_list)) {
-      stop("include_gj length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
+    if(length(include_issue) != length(ssl_list)) {
+      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
     }
     
     # Load Data if Needed =====
@@ -73,7 +73,7 @@ backtest_portfolio =
       # Sector
       sector_info <- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
       # Gwanli Stocks
-      # gj_df <- dbGetQuery(conn, "select * from gj_table)
+      issue_df <- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
       # Safe Haven
       safe_haven_price <- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
       
@@ -99,10 +99,12 @@ backtest_portfolio =
       filter(date <= ymd(end_date)) %>%
       mutate(kospi_cumret = cumprod(kospi+1)-1, kosdaq_cumret = cumprod(kosdaq+1)-1)
     sector_info %<>% mutate(date=ymd(date))
+    issue_df %<>% 
+      mutate(date = ymd(date))
     safe_haven_price %<>% 
       select(date, price=adj_close_price) %>% 
       mutate(date = ymd(date))
-
+    
     # Start Simulation =====
     rets_total <- data.frame()
     for (l in 1:length(ssl_list)) {
@@ -118,9 +120,9 @@ backtest_portfolio =
         ungroup()
       
       # Remove Gwanli Stocks =====
-      # if(include_gj[l] == 'N') {
-      #   ssl <- ssl %>% left_join(gj_df %>% mutate(gj_yn = 1) %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(gj_yn)) %>% select(-gj_yn)
-      # }
+      if(include_issue[l] == 'N') {
+        ssl <- ssl %>% left_join(issue_df %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(issue)) %>% select(-issue)
+      }
       
       # Sector Neutral =====
       max_stock_per_sector = floor(topN[l]*SN_ratio[l])
@@ -269,8 +271,8 @@ backtest_portfolio =
     
     # Prepare Plot =====
     rets_total <- rbind(rets_total,
-                       d_kospi_kosdaq_cum %>% select(date, return=kospi_cumret) %>% mutate(model_nm = "KOSPI") %>% filter(date <= max(rets_total$date)),
-                       d_kospi_kosdaq_cum %>% select(date, return=kosdaq_cumret) %>% mutate(model_nm = "KOSDAQ") %>% filter(date <= max(rets_total$date)))
+                        d_kospi_kosdaq_cum %>% select(date, return=kospi_cumret) %>% mutate(model_nm = "KOSPI") %>% filter(date <= max(rets_total$date)),
+                        d_kospi_kosdaq_cum %>% select(date, return=kosdaq_cumret) %>% mutate(model_nm = "KOSDAQ") %>% filter(date <= max(rets_total$date)))
     
     toc()
     
@@ -300,7 +302,7 @@ backtest_portfolio =
 
 #' @export
 backtest_portfolio_strict =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, include_gj = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, include_issue = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
     
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
@@ -340,11 +342,11 @@ backtest_portfolio_strict =
         stop("weight_list length must be equal to ssl_list length. If you don't wanted to use this argument, use single NA instead")
       }
     }
-    if(is.na(include_gj)) {
-      include_gj = rep('N', length(ssl_list))
+    if(is.na(include_issue)) {
+      include_issue = rep('N', length(ssl_list))
     }
-    if(length(include_gj) != length(ssl_list)) {
-      stop("include_gj length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
+    if(length(include_issue) != length(ssl_list)) {
+      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
     }
     
     # Load Data if Needed =====
@@ -369,7 +371,7 @@ backtest_portfolio_strict =
       # Sector
       sector_info <- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
       # Gwanli Stocks
-      # gj_df <- dbGetQuery(conn, "select * from gj_table)
+      issue_df <- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
       # Safe Haven
       safe_haven_price <- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
       
@@ -384,7 +386,7 @@ backtest_portfolio_strict =
       mutate(date=ymd(date),
              stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>% 
       # 상폐만 0원으로 처리하려면 아래 한 줄 주석처리 : 거래정지는 정지 시점의 종가로 계산
-      mutate(adj_close_price = ifelse(adj_open_price == 0 & adj_high_price == 0 & adj_low_price == 0 & adj_trading_volume == 0 & adj_close_price != 0, NA, adj_close_price)) %>% 
+      mutate(adj_close_price = ifelse(adj_open_price == 0 & adj_high_price == 0 & adj_low_price == 0 & adj_trading_volume == 0 & adj_close_price != 0, NA, adj_close_price)) %>%
       select(date, stock_cd, price=adj_close_price)
     d_kospi_kosdaq_cum <-
       d_kospi_kosdaq %>%
@@ -397,6 +399,8 @@ backtest_portfolio_strict =
       filter(date <= ymd(end_date)) %>%
       mutate(kospi_cumret = cumprod(kospi+1)-1, kosdaq_cumret = cumprod(kosdaq+1)-1)
     sector_info %<>% mutate(date=ymd(date))
+    issue_df %<>% 
+      mutate(date = ymd(date))
     safe_haven_price %<>% 
       select(date, price=adj_close_price) %>% 
       mutate(date = ymd(date))
@@ -416,9 +420,9 @@ backtest_portfolio_strict =
         ungroup()
       
       # Remove Gwanli Stocks =====
-      # if(include_gj[l] == 'N') {
-      #   ssl <- ssl %>% left_join(gj_df %>% mutate(gj_yn = 1) %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(gj_yn)) %>% select(-gj_yn)
-      # }
+      if(include_issue[l] == 'N') {
+        ssl <- ssl %>% left_join(issue_df %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(issue)) %>% select(-issue)
+      }
       
       # Sector Neutral =====
       max_stock_per_sector = floor(topN[l]*SN_ratio[l])
