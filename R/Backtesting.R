@@ -44,9 +44,6 @@ backtest_portfolio =
         stop("weight_list length must be equal to ssl_list length. If you don't wanted to use this argument, use single NA instead")
       }
     }
-    if(is.na(include_issue)) {
-      include_issue = rep('N', length(ssl_list))
-    }
     if(length(include_issue) != length(ssl_list)) {
       stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
     }
@@ -341,9 +338,6 @@ backtest_portfolio_strict =
       } else {
         stop("weight_list length must be equal to ssl_list length. If you don't wanted to use this argument, use single NA instead")
       }
-    }
-    if(is.na(include_issue)) {
-      include_issue = rep('N', length(ssl_list))
     }
     if(length(include_issue) != length(ssl_list)) {
       stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
