@@ -296,4 +296,3 @@ backtest_portfolio =
                        show.legend = FALSE) +
       ggtitle(test_title)
   }
-
