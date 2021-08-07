@@ -3,11 +3,6 @@
 # Initial settings including loading data from DB and SSL from local/cloud
 
 #' @export
-# 리밸런싱 주기 자유
-# 종목 비중 Arg 추가
-# 관리종목 제외 Arg 추가
-# 안전자산 편입 Arg 추가
-
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, include_gj = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
     
