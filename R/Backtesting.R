@@ -3,6 +3,11 @@
 # Initial settings including loading data from DB and SSL from local/cloud
 
 #' @export
+# 리밸런싱 주기 자유
+# 종목 비중 Arg 추가
+# 관리종목 제외 Arg 추가
+# 안전자산 편입 Arg 추가
+
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, include_gj = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
     
@@ -117,10 +122,25 @@ backtest_portfolio =
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
       
-      # Remove Gwanli Stocks
+      # Remove Gwanli Stocks =====
       # if(include_gj[l] == 'N') {
       #   ssl <- ssl %>% left_join(gj_df %>% mutate(gj_yn = 1) %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(gj_yn)) %>% select(-gj_yn)
       # }
+      
+      # Sector Neutral =====
+      max_stock_per_sector = floor(topN[l]*SN_ratio[l])
+      # Create Sector Neutral SSL
+      sector_filtering_df <-
+        ssl %>%
+        left_join(sector_info %>% select(stock_cd, sector), by="stock_cd") %>%
+        group_by(date, sector) %>%
+        arrange(desc(get(pred_col[l])), .by_group =T) %>%
+        dplyr::slice(1:max_stock_per_sector) %>% 
+        ungroup() %>% 
+        select(date, stock_cd, sector)
+      ssl_sn <-
+        ssl %>%
+        inner_join(sector_filtering_df %>% select(-sector), by=c("date", "stock_cd"))
       
       rebalancing_dates <- unique(ssl$date)
       
@@ -130,24 +150,6 @@ backtest_portfolio =
       
       # Work =====
       for(i in rebalancing_dates) {
-        
-        # Sector Neutral =====
-        
-        # Calculate Max Number of Stocks per Sector
-        max_stock_per_sector = floor(topN[l]*SN_ratio[l])
-        
-        # Create Sector Neutral SSL
-        sector_filtering_df <-
-          ssl %>%
-          left_join(sector_info %>% select(stock_cd, sector), by="stock_cd") %>%
-          group_by(date, sector) %>%
-          arrange(desc(get(pred_col[l])), .by_group =T) %>%
-          dplyr::slice(1:max_stock_per_sector) %>% 
-          ungroup() %>% 
-          select(date, stock_cd, sector)
-        ssl_sn <-
-          ssl %>%
-          inner_join(sector_filtering_df %>% select(-sector), by=c("date", "stock_cd"))
         
         # Calculate Each Stock Return =====
         
@@ -299,3 +301,4 @@ backtest_portfolio =
                        show.legend = FALSE) +
       ggtitle(test_title)
   }
+
