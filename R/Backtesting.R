@@ -165,6 +165,7 @@ backtest_portfolio =
           filter(stock_cd %in% (ssl_sn %>% filter(date == i) %>% slice_max(n=topN[l], order_by=get(pred_col[l])) %>% pull(stock_cd))) %>%
           spread(key = "stock_cd",
                  value = "price")
+        rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
         names(rets_temp)[-1] <- paste0("stock", c(1 : topN[l]))
         
         # Calculate Daily Return with Tax
@@ -462,7 +463,7 @@ backtest_portfolio_strict =
           filter(stock_cd %in% (ssl_sn %>% filter(date == i) %>% slice_max(n=topN[l], order_by=get(pred_col[l])) %>% pull(stock_cd))) %>%
           spread(key = "stock_cd",
                  value = "price")
-        rets_temp[is.na(rets_temp)] = 0
+        rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
         names(rets_temp)[-1] <- paste0("stock", c(1 : topN[l]))
         
         # Calculate Daily Return with Tax
