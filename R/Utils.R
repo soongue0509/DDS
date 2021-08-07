@@ -13,6 +13,9 @@ ssl_join <- function(ssl1, ssl2, ssl1_ratio) {
     rename(ssl1=pred_mean.x, ssl2=pred_mean.y) %>%
     mutate(pred_mix = ssl1*ssl1_ratio + ssl2*(1-ssl1_ratio)) %>%
     select(date, stock_cd, ssl1, ssl2, pred_mix, target_1m_return) %>%
-    arrange(desc(pred_mix))
+    arrange(date) %>%
+    group_by(date) %>%
+    arrange(desc(pred_mix), .by_group = T) %>%
+    ungroup()
   return(ssl_mix)
 }
