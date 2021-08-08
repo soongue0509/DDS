@@ -199,7 +199,7 @@ eda_shap_test_mix = function(shap_ind_test, shap_10_test, ssl_ind, ssl_10, featu
 
 
 #' @export
-eda_shap_newvars = function(shap_new, shap_old, features, scope = 'new'){
+eda_shap_newvars = function(shap_new, shap_old, features, years = '1y', scope = 'new'){
 
   newvars = setdiff(shap_new$variable %>% unique,shap_old$variable %>% unique)
 
@@ -301,26 +301,26 @@ eda_shap_newvars = function(shap_new, shap_old, features, scope = 'new'){
 
     shap_category = shap_change %>% left_join(features %>% rename(variable = feature) %>% select(variable, category), by = 'variable') %>%
       filter(complete.cases(.)) %>%
-      group_by(category) %>% arrange(-get(paste0('diff_','1y')),.by_group = T) %>% dplyr::slice(1:5) %>%
-      summarise(rank = round(mean(`1y`),0)) %>%
+      group_by(category) %>% arrange(-get(paste0('diff_',years)),.by_group = T) %>% dplyr::slice(1:5) %>%
+      summarise(rank = round(mean(get(years)),0)) %>%
       mutate(category_rank = paste0(category, ": ",rank)) %>% arrange(rank) %>% select(category, category_rank)
 
     shap_category %<>% mutate(category_rank = factor(category_rank, levels = shap_category$category_rank))
 
     feat_lev = shap_change %>% left_join(features %>% rename(variable = feature) %>% select(variable, category), by = 'variable') %>%
-      filter(complete.cases(.)) %>% group_by(category) %>% arrange(-get(paste0('diff_','1y')),.by_group = T) %>% dplyr::slice(1:5) %>%
+      filter(complete.cases(.)) %>% group_by(category) %>% arrange(-get(paste0('diff_',years)),.by_group = T) %>% dplyr::slice(1:5) %>%
       mutate(variable = str_wrap(gsub('_', ' ', variable),12)) %>%
-      rename(feature = variable) %>% pull(feature) # %>% arrange(paste0('diff_','1y'))
+      rename(feature = variable) %>% pull(feature)
 
     shap_change %>% left_join(features %>% rename(variable = feature) %>% select(variable, category), by = 'variable') %>%
-      filter(complete.cases(.)) %>% group_by(category) %>% arrange(-get(paste0('diff_','1y')),.by_group = T) %>% dplyr::slice(1:5) %>%
+      filter(complete.cases(.)) %>% group_by(category) %>% arrange(-get(paste0('diff_',years)),.by_group = T) %>% dplyr::slice(1:5) %>%
       ungroup() %>%
       mutate(variable = str_wrap(gsub('_', ' ', variable),12)) %>%
       rename(feature = variable) %>%
       left_join(shap_category, by = 'category') %>%
-      select('feature','1y',paste0('new_','1y'),'category', 'category_rank') %>%
+      select('feature',years,paste0('new_',years),'category', 'category_rank') %>%
       reshape2::melt(id.vars = c('feature', 'category', 'category_rank')) %>%
-      mutate(variable = factor(variable, levels = c('1y',paste0('new_','1y')))) %>%
+      mutate(variable = factor(variable, levels = c(years,paste0('new_',years)))) %>%
       ggplot(aes(x = factor(feature,levels = feat_lev), y = value, fill = variable)) +
       geom_bar(stat = 'identity', position = position_dodge(width = 0.7), width = 0.7, alpha = 0.8) +
       xlab('Variable') + ylab('Rank') +
@@ -331,4 +331,5 @@ eda_shap_newvars = function(shap_new, shap_old, features, scope = 'new'){
   }
 
 }
+
 
