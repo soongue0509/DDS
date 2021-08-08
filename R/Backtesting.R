@@ -4,7 +4,7 @@
 
 #' @export
 backtest_portfolio =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, include_issue, safe_haven = NA, weight_list = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
     
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
@@ -299,7 +299,7 @@ backtest_portfolio =
 
 #' @export
 backtest_portfolio_strict =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, include_issue, safe_haven = NA, weight_list = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
     
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
