@@ -2,6 +2,9 @@
 
 export(backtest_portfolio)
 export(backtest_portfolio_strict)
+export(eda_shap_newvars)
+export(eda_shap_test_mix)
+export(eda_shap_train)
 export(explain_why)
 export(how_many_shares)
 export(modeling_func)
