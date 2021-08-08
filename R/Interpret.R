@@ -44,7 +44,8 @@ return_tile = function(df, ssl_input, pred_col, topN) {
     dplyr::slice(1:topN) %>%
     group_by(date) %>%
     summarize(portfolio_return = mean(target_1m_return)) %>%
-    left_join(market_updown %>% select(date, kospi, kosdaq, market_avg), by="date")
+    left_join(market_updown %>% select(date, kospi, kosdaq, market_avg), by="date") %>%
+    na.omit()
 
   pvm %>%
     mutate(date = fct_rev(factor(date))) %>%
