@@ -112,17 +112,22 @@ upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.0, secon
     }
   }
   
-  bound_cumret_df %>%
+  gp <-
+    bound_cumret_df %>%
     filter(!substr(date, 1, 7) %in% c('2020-03', '2020-04')) %>% 
     group_by(try_idx, first_upper_bound, second_upper_bound) %>% 
     mutate(cumret = cumprod(portfolio_return+1)-1, 
            first_cnt = sum(first_cnt), 
-           econd_cnt = sum(second_cnt)) %>% 
+           second_cnt = sum(second_cnt)) %>% 
     filter(date == max(date)) %>% 
+    ungroup() %>% 
     mutate(cnt = ifelse(first_upper_bound == second_upper_bound, as.character(first_cnt), paste0(first_cnt, '→', second_cnt))) %>% 
+    select(try_idx, first_upper_bound, second_upper_bound, cumret, cnt) %>% 
+    as.data.frame() %>% 
     ggplot(aes(x=first_upper_bound, y=second_upper_bound, fill=cumret, label=cnt)) + 
-    geom_tile() +
-    geom_text(aes(x=first_upper_bound, y=second_upper_bound, label=cnt), color="black") + 
+    geom_tile(width=0.05,height=0.05) +
+    geom_text() +
     facet_wrap(try_idx ~ .) +
     theme_minimal()
+  print(gp)
 }
