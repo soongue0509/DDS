@@ -33,6 +33,22 @@ upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.00, seco
     stop("second_plus must be greater than 0.05")
   }
   
+  library(RMySQL)
+  conn <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231 ,
+    dbname = 'stock_db'
+  )
+  dbSendQuery(conn, "SET NAMES utf8;")
+  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+  d_stock_price <-
+    dbGetQuery(conn, "select * from stock_adj_price where date >= '20170101';") %>% 
+    mutate(date = ymd(date))
+  
   first_upper_bound_vec = seq(0.1, first_bound, by=0.05)
   second_upper_plus_vec = seq(0.0, second_plus, by=0.05)
   bound_cumret_df <- data.frame()
