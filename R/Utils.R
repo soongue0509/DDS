@@ -21,7 +21,7 @@ ssl_join <- function(ssl1, ssl2, ssl1_ratio) {
 }
 
 #' @export
-upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.0, second_plus=0.05, num_tries) {
+upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.00, second_plus=0.30, num_tries) {
   
   if (num_tries <= 0) {
     stop("num_tries must be greater than 0")
