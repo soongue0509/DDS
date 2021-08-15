@@ -78,7 +78,7 @@ return_tile = function(df, ssl_input, pred_col, topN) {
 
 ### SHAP Single Model EDA
 #' @export
-eda_shap_train = function(shap, feature){
+eda_shap_train = function(shap, features){
 
   shap_mean = shap %>% group_by(date,variable) %>% dplyr::slice(1) %>% ungroup()
 
@@ -134,7 +134,7 @@ eda_shap_train = function(shap, feature){
 
 ### SHAP Multi Model EDA
 #' @export
-eda_shap_test_mix = function(shap_ind_test, shap_10_test, ssl_ind, ssl_10, feature, top_n = 30){
+eda_shap_test_mix = function(shap_ind_test, shap_10_test, ssl_ind, ssl_10, features, top_n = 30){
 
   shap_test_mix = ssl_ind %>% rename(pred_ind = pred_mean) %>%
     left_join(ssl_t10 %>% rename(pred_10 = pred_mean), by = c('date','stock_cd')) %>%
