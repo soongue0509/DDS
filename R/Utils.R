@@ -130,7 +130,8 @@ upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.00, seco
   
   gp <-
     bound_cumret_df %>%
-    filter(!substr(date, 1, 7) %in% c('2020-03', '2020-04')) %>% 
+    filter(substr(as.Date(date, origin ='1970-01-01'), 1, 7) != c('2020-03')) %>% 
+    filter(substr(as.Date(date, origin ='1970-01-01'), 1, 7) != c('2020-04')) %>% 
     group_by(try_idx, first_upper_bound, second_upper_bound) %>% 
     mutate(cumret = cumprod(portfolio_return+1)-1, 
            first_cnt = sum(first_cnt), 
