@@ -814,7 +814,7 @@ backtest_portfolio_usa =
   }
 
 #' @export
-return_tile = function(df, ssl_input, pred_col, topN) {
+return_tile = function(df, ssl_input, topN, pred_col) {
 
   if(!"target_1m_return" %in% colnames(ssl_input)){
     stop("target_1m_return must exist in ssl")
