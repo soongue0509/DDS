@@ -83,7 +83,7 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
 # SHAP for chosen stocks
 
 #' @export
-explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date, macro_yn=TRUE) {
+explain_why = function(shap, topN, inv_date, macro_yn=FALSE) {
   
   stock_db_connection <- dbConnect(
     MySQL(),
@@ -99,39 +99,21 @@ explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date, ma
   
   stock_nm = dbGetQuery(stock_db_connection, paste0("select stock_cd, stock_nm from stock_market_sector where date = '", inv_date,"';"))
   
-  temp1 <-
-    left_join(
-      shap1 %>% select(date, stock_cd, variable, value, rfvalue),
-      ssl1 %>% select(date, stock_cd, pred_mean),
-      by=c("date", "stock_cd")
-    )
-  temp2 <-
-    left_join(
-      shap2 %>% select(date, stock_cd, variable, value, rfvalue),
-      ssl2 %>% select(date, stock_cd, pred_mean),
-      by=c("date", "stock_cd")
-    )
-  
   if (macro_yn == TRUE) {
     temp <- 
-      left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
-      mutate(value = value.x*join_ratio*pred_mean.x + value.y*(1-join_ratio)*pred_mean.y,
-             rfvalue = rfvalue.x,
-             pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
+      shap %>% 
+      filter(date == max(date)) %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean)
   } else {
     feature_list <- dbGetQuery(stock_db_connection, "select * from feature_list_20210709")
     temp <- 
-      left_join(temp1, temp2, by=c("date", "stock_cd", "variable")) %>% 
-      mutate(value = value.x*join_ratio*pred_mean.x + value.y*(1-join_ratio)*pred_mean.y,
-             rfvalue = rfvalue.x,
-             pred_mean = pred_mean.x*join_ratio + pred_mean.y*(1-join_ratio)) %>% 
+      shap %>% 
+      filter(date == max(date)) %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean) %>% 
       left_join(feature_list %>% filter(category == 'Macro') %>% select(feature, category), by=c("variable"="feature")) %>% 
       filter(is.na(category)) %>% 
-      filter(!str_detect(variable, "(vix|interest_diff)")) %>% 
       select(-category)
-    }
+  }
   
   plot_df <-
     temp %>% 
@@ -140,7 +122,7 @@ explain_why = function(shap1, ssl1, shap2, ssl2, join_ratio, top_N, inv_date, ma
         select(date, stock_cd, pred_mean) %>% 
         unique() %>% 
         arrange(desc(pred_mean)) %>% 
-        dplyr::slice(1:top_N) %>% 
+        dplyr::slice(1:topN) %>% 
         select(-pred_mean),
       by=c("date", "stock_cd")
     ) %>% 
