@@ -165,11 +165,12 @@ backtest_portfolio =
           spread(key = "stock_cd",
                  value = "price")
         rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
-        names(rets_temp)[-1] <- paste0("stock", c(1 : topN[l]))
+        ssc = ncol(rets_temp)-1
+        names(rets_temp)[-1] <- paste0("stock", c(1 : ssc))
         
         # Calculate Daily Return with Tax
         rets_base <- rets_temp
-        for (s in 1:topN[l]) {
+        for (s in 1:ssc) {
           rets_base <- cbind(rets_base, rets_temp %$% get(paste0('stock', s))[1])
           colnames(rets_base)[ncol(rets_base)] <- paste0("base", s)
           rets_base %<>% mutate(return_temp = ( (get(paste0('stock',s)) * (1-0.00315)) -get(paste0('base',s)) ) / get(paste0('base',s)))
