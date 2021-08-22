@@ -854,12 +854,13 @@ return_tile = function(ssl_input, topN, pred_col) {
     ssl_input %>%
     group_by(date) %>%
     arrange(desc(get(pred_col)), .by_group = T) %>%
-    na.omit() %>%
+    filter(date <= Sys.Date()-30) %>%
     dplyr::slice(1:topN) %>%
+    ungroup() %>%
+    mutate(target_1m_return = ifelse(is.na(target_1m_return), -1, target_1m_return)) %>%
     group_by(date) %>%
     summarize(portfolio_return = mean(target_1m_return)) %>%
-    left_join(market_updown %>% select(date, kospi, kosdaq, market_avg), by="date") %>%
-    na.omit()
+    left_join(market_updown %>% select(date, kospi, kosdaq, market_avg), by="date")
 
   pvm %>%
     mutate(date = fct_rev(factor(date))) %>%
