@@ -597,14 +597,17 @@ backtest_portfolio_strict =
 
 #' @export
 backtest_portfolio_usa =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, upper_bound, lower_bound, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
-
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, upper_bound, lower_bound, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
+    
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
       stop("topN length must be equal to ssl_list length")
     }
     if(length(pred_col) != length(ssl_list)) {
       stop("pred_col length must be equal to ssl_list length")
+    }
+    if(length(SN_ratio) != length(ssl_list)) {
+      stop("SN_ratio length must be equal to ssl_list length. If you don't wanted to use this argument, use 1 instead")
     }
     if(length(upper_bound) != length(ssl_list)) {
       stop("upper_bound length must be equal to ssl_list length")
@@ -620,7 +623,7 @@ backtest_portfolio_usa =
     if(sum(lower_bound >= 0) > 0) {
       stop("Lower selling lower bound must be less than Zero")
     }
-
+    
     # Load Data if Needed =====
     if(load_data == 'Y') {
       library(RMySQL)
@@ -635,18 +638,20 @@ backtest_portfolio_usa =
       dbSendQuery(conn, "SET NAMES utf8;")
       dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
       dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
-
+      
       # Stock Price
       d_stock_price <- dbGetQuery(conn, paste0("select * from stock_usa.stock_adj_price where date >= '", start_date ,"';"))
       # snp500 & nasdaq
       d_snp500_nasdaq <- dbGetQuery(conn, "select date, `s&p_500_composite_pt` as snp500, `nasdaq_composite_pt` as nasdaq from macro_global where date >= '20150101';")
-
+      # Sector
+      sector_info <- dbGetQuery(conn, "select stock_cd, sector from stock_usa.stock_sector_industry")
+      
       # Disconnect MySQL Server
       lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
     }
-
+    
     tic()
-
+    
     # Prepare Data =====
     d_stock_price %<>%
       mutate(date=ymd(date),
@@ -676,20 +681,34 @@ backtest_portfolio_usa =
         arrange(desc(get(pred_col[l])), .by_group = TRUE) %>%
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
-
-      ssl_sn <- ssl
-
+      
+      # Sector Neutral =====
+      max_stock_per_sector = floor(topN[l]*SN_ratio[l])
+      # Create Sector Neutral SSL
+      sector_filtering_df <-
+        ssl %>%
+        left_join(sector_info %>% select(stock_cd, sector), by="stock_cd") %>%
+        group_by(date, sector) %>%
+        arrange(desc(get(pred_col[l])), .by_group =T) %>%
+        dplyr::slice(1:max_stock_per_sector) %>% 
+        ungroup() %>% 
+        select(date, stock_cd, sector)
+      ssl_sn <-
+        ssl %>%
+        inner_join(sector_filtering_df %>% select(-sector), by=c("date", "stock_cd"))
+      # =====================
+      
       rebalancing_dates <- unique(ssl$date)
-
+      
       rets_cum <- data.frame()
       market_win_vec <- c()
       risk_ratio_vec <- c()
-
+      
       # Work =====
       for(i in rebalancing_dates) {
-
+        
         # Calculate Each Stock Return =====
-
+        
         # Get Stock Price of Selected Stocks
         rets_temp <-
           d_stock_price %>%
@@ -709,7 +728,7 @@ backtest_portfolio_usa =
                  value = "price")
         rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
         names(rets_temp)[-1] <- paste0("stock", c(1 : topN[l]))
-
+        
         # Calculate Daily Return with Tax
         rets_base <- rets_temp
         for (s in 1:topN[l]) {
@@ -718,9 +737,9 @@ backtest_portfolio_usa =
           rets_base %<>% mutate(return_temp = ( (get(paste0('stock',s)) * (1-0.00315)) -get(paste0('base',s)) ) / get(paste0('base',s)))
           colnames(rets_base)[ncol(rets_base)] <- paste0("return", s)
         }
-
+        
         rets <- rets_base %>% select(date, contains('return'))
-
+        
         # Active Trading
         active_rets = rets %>% select(-date)
         idx <- ifelse(apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max) == 1 | apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max) == nrow(rets), -1, apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max)) + 1
@@ -731,15 +750,15 @@ backtest_portfolio_usa =
         }
         active_rets <- na.locf(active_rets)
         active_rets
-
+        
         # Calculate Portfolio Return =====
-
+        
         rets_cum_temp = cbind(date=rets[,"date"], active_rets)
-
+        
         portfolio.returns <- c()
-
+        
         portfolio.returns <- rets_cum_temp %>% mutate(pr = rowMeans(rets_cum_temp %>% select(-date))) %>% pull(pr) %>% unname()
-
+        
         # Save Cumulative Return =====
         if (nrow(rets_cum) == 0) {
           rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date, return = portfolio.returns))
@@ -747,10 +766,10 @@ backtest_portfolio_usa =
           rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date[-1],
                                                  return=((1+portfolio.returns[-1])*(1+rets_cum$return[nrow(rets_cum)])-1)))
         }
-
+        
         # Extra Metrics =====
         # Monthly Win Ratio
-
+        
         market_win_yn <-
           d_snp500_nasdaq_cum %>%
           filter(date %in% rets_cum_temp$date) %>%
@@ -759,13 +778,13 @@ backtest_portfolio_usa =
           mutate(snp500_cumret = cumprod(1+snp500)-1, nasdaq_cumret = cumprod(1+nasdaq)-1) %>%
           mutate(market_cumret = (snp500_cumret+nasdaq_cumret)/2) %$%
           market_cumret[nrow(.)] < portfolio.returns[length(portfolio.returns)]
-
+        
         market_win_vec <- c(market_win_vec, market_win_yn)
-
+        
         # Risk Ratio
         risk_ratio_vec <- c(risk_ratio_vec, portfolio.returns[length(portfolio.returns)])
       }
-
+      
       # Post-work =====
       model_nm_temp =
         paste0(
@@ -778,18 +797,18 @@ backtest_portfolio_usa =
           "Stability: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec), 2), ", ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
-
+      
       rets_total <- rbind(rets_total, rets_cum %>% mutate(model_nm = model_nm_temp))
       print(model_nm_temp)
     }
-
+    
     # Prepare Plot =====
     rets_total <- rbind(rets_total,
                         d_snp500_nasdaq_cum %>% select(date, return=snp500_cumret) %>% mutate(model_nm = "snp500") %>% filter(date <= max(rets_total$date)),
                         d_snp500_nasdaq_cum %>% select(date, return=nasdaq_cumret) %>% mutate(model_nm = "nasdaq") %>% filter(date <= max(rets_total$date)))
-
+    
     toc()
-
+    
     rets_total %>% mutate(label = if_else(date == max(date), as.character(round(return,2)), NA_character_)) %>%
       ggplot(aes(x=ymd(date), y=return, col=model_nm)) +
       geom_line(size=1.1) +
