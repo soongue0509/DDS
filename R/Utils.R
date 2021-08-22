@@ -21,6 +21,17 @@ ssl_join <- function(ssl1, ssl2, ssl1_ratio) {
 }
 
 #' @export
+ssl_intersect <- function(ssl1, ssl2, topN) {
+  result = 
+    inner_join(ssl1 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl1_pred_mean = pred_mean, target_1m_return),
+               ssl2 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl2_pred_mean = pred_mean),
+               by=c("date", "stock_cd")) %>% 
+    ungroup() %>% 
+    select(date, stock_cd, ssl1_pred_mean, ssl2_pred_mean, target_1m_return)
+  return(result)
+}
+
+#' @export
 upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.00, second_plus=0.30, num_tries) {
   
   if (num_tries <= 0) {
