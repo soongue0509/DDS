@@ -654,8 +654,7 @@ backtest_portfolio_usa =
     
     # Prepare Data =====
     d_stock_price %<>%
-      mutate(date=ymd(date),
-             stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
+      mutate(date=ymd(date)) %>% 
       select(date, stock_cd, price=adj_close_price)
     d_snp500_nasdaq_cum <-
       d_snp500_nasdaq %>%
@@ -667,7 +666,7 @@ backtest_portfolio_usa =
       filter(date >= ymd(start_date)) %>%
       filter(date <= ymd(end_date)) %>%
       mutate(snp500_cumret = cumprod(snp500+1)-1, nasdaq_cumret = cumprod(nasdaq+1)-1)
-
+    
     # Start Simulation =====
     rets_total <- data.frame()
     for (l in 1:length(ssl_list)) {
@@ -679,7 +678,6 @@ backtest_portfolio_usa =
         group_by(date) %>%
         select(date, stock_cd, pred_col[l]) %>%
         arrange(desc(get(pred_col[l])), .by_group = TRUE) %>%
-        mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
       
       # Sector Neutral =====
@@ -791,6 +789,7 @@ backtest_portfolio_usa =
           str_pad(l, side='left', width=2, pad='0'), ".",
           pred_col[l], ", ",
           "Top", topN[l], ", ",
+          "SN: ", format(SN_ratio[l], nsmall = 1),
           ifelse(upper_bound[l]==999999 & lower_bound[l]==-999999, "", paste0(", Sell Bound: (", ifelse(lower_bound[l]==-999999, "None", lower_bound[l]), " [", ifelse(upper_bound[l]==999999, "None", upper_bound[l]), ") [")),
           "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
           "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
