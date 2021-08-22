@@ -654,7 +654,7 @@ backtest_portfolio_usa =
     
     # Prepare Data =====
     d_stock_price %<>%
-      mutate(date=ymd(date)) %>% 
+      mutate(date = ymd(date)) %>% 
       select(date, stock_cd, price=adj_close_price)
     d_snp500_nasdaq_cum <-
       d_snp500_nasdaq %>%
