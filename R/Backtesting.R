@@ -815,7 +815,7 @@ backtest_portfolio_usa =
   }
 
 #' @export
-return_tile = function(df, ssl_input, topN, pred_col) {
+return_tile = function(ssl_input, topN, pred_col) {
 
   if(!"target_1m_return" %in% colnames(ssl_input)){
     stop("target_1m_return must exist in ssl")
@@ -839,7 +839,7 @@ return_tile = function(df, ssl_input, topN, pred_col) {
 
   # Get Market Updown
   market_updown <-
-    df %>%
+    ssl_input %>%
     select(date) %>%
     unique() %>%
     left_join(d_kospi_kosdaq %>% mutate(date = ymd(date)) %>% select(date, kospi, kosdaq), by ="date") %>%
