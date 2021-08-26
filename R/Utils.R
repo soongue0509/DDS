@@ -161,5 +161,5 @@ upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_
     group_by(first_upper_bound, second_upper_bound) %>% 
     summarize(hit_ratio = mean(hit_ratio))
   
-  print(paste0("[Max Hit Ratio] upper : ", max_hit_ratio_df$first_upper_bound, " / lower : ", max_hit_ratio_df$second_upper_bound, " / hit ratio : ", max_hit_ratio_df$hit_ratio, " \n "))
+  print(paste0("[Max Hit Ratio] upper : ", max_hit_ratio_df$first_upper_bound, " / lower : ", max_hit_ratio_df$second_upper_bound, " / hit ratio : ", round(max_hit_ratio_df$hit_ratio), 4))
 }
