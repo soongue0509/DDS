@@ -32,7 +32,7 @@ ssl_intersect <- function(ssl1, ssl2, topN) {
 }
 
 #' @export
-upper_bound_calc = function(ssl, top_n, first_bound=1.00, second_plus=0.30, num_tries, load_data_yn == 'Y') {
+upper_bound_calc = function(ssl, top_n, first_bound=1.00, second_plus=0.30, num_tries, load_data == 'Y') {
   
   if (num_tries <= 0) {
     stop("num_tries must be greater than 0")
@@ -44,7 +44,7 @@ upper_bound_calc = function(ssl, top_n, first_bound=1.00, second_plus=0.30, num_
     stop("second_plus must be greater than 0.05")
   }
   
-  if (load_data_yn == 'Y') {
+  if (load_data == 'Y') {
     library(RMySQL)
     conn <- dbConnect(
       MySQL(),
