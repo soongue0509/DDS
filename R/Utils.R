@@ -32,7 +32,7 @@ ssl_intersect <- function(ssl1, ssl2, topN) {
 }
 
 #' @export
-upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_tries, load_data == 'Y') {
+upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_tries, load_data = 'Y') {
   
   if (num_tries <= 0) {
     stop("num_tries must be greater than 0")
