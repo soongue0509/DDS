@@ -87,7 +87,8 @@ upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_
         
         print(paste0("first_upper: ", first_upper_bound, "  /  second_upper: ", second_upper_bound))
         
-        for(i in rebalancing_dates[-length(rebalancing_dates)]) {
+        for(k in rebalancing_dates[-length(rebalancing_dates)]) {
+          i = as.Date(k, origin = '1970-01-01')
           
           portfolio_return <-
             d_stock_price %>%
@@ -151,4 +152,15 @@ upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_
     facet_wrap(try_idx ~ .) +
     theme_minimal()
   print(gp)
+  
+  options(dplyr.summarise.inform = FALSE)
+  max_hit_ratio_df =
+    bound_cumret_df %>%
+    group_by(try_idx, first_upper_bound, second_upper_bound) %>% 
+    summarize(hit_ratio = sum(ifelse(portfolio_return > 0, 1, 0))/n()) %>% 
+    group_by(first_upper_bound, second_upper_bound) %>% 
+    summarize(hit_ratio = mean(hit_ratio)) %>% 
+    filter(hit_ratio == max(hit_ratio))
+  
+  print(paste0("[Max Hit Ratio] upper : ", max_hit_ratio_df$first_upper_bound, " / lower : ", max_hit_ratio_df$second_upper_bound, " / hit ratio : ", max_hit_ratio_df$hit_ratio))
 }
