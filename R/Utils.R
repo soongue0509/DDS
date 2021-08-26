@@ -67,7 +67,8 @@ upper_bound_calc = function(ssl, top_n, first_bound=1.00, second_plus=0.30, num_
   for (j in 1:num_tries) {
     
     print(j)
-
+    
+    set.seed(j)
     ssl_sample <- 
       ssl %>% 
       mutate(pred_sample_mean = rowMeans(ssl %>% select(sample(colnames(ssl)[str_detect(colnames(ssl), 'pred\\d')], 50, replace=T)))) %>% 
