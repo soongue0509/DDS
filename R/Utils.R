@@ -32,7 +32,7 @@ ssl_intersect <- function(ssl1, ssl2, topN) {
 }
 
 #' @export
-upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.00, second_plus=0.30, num_tries) {
+upper_bound_calc = function(ssl, top_n, first_bound=1.00, second_plus=0.30, num_tries) {
   
   if (num_tries <= 0) {
     stop("num_tries must be greater than 0")
@@ -67,25 +67,15 @@ upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.00, seco
   for (j in 1:num_tries) {
     
     print(j)
-    
-    ssl1_temp <- 
-      ssl1 %>% 
-      mutate(pred_sample_mean = rowMeans(ssl1 %>% select(sample(colnames(ssl1)[str_detect(colnames(ssl1), 'pred\\d')], 30, replace=T)))) %>% 
-      select(date,stock_cd, pred_sample_mean)
-    
-    ssl2_temp <- 
-      ssl2 %>% 
-      mutate(pred_sample_mean = rowMeans(ssl2 %>% select(sample(colnames(ssl2)[str_detect(colnames(ssl2), 'pred\\d')], 30, replace=T)))) %>% 
-      select(date,stock_cd, pred_sample_mean)
-    
-    ssl_mix <- 
-      left_join(ssl1_temp, ssl2_temp, by = c("date", "stock_cd")) %>% 
-      mutate(pred_mix = pred_sample_mean.x * mix_ratio + pred_sample_mean.y * (1-mix_ratio)) %>% 
-      select(date, stock_cd, pred_mix) %>% 
+
+    ssl_sample <- 
+      ssl %>% 
+      mutate(pred_sample_mean = rowMeans(ssl %>% select(sample(colnames(ssl)[str_detect(colnames(ssl), 'pred\\d')], 50, replace=T)))) %>% 
+      select(date,stock_cd, pred_sample_mean) %>% 
       group_by(date) %>% 
-      arrange(desc(pred_mix), .by_group=TRUE)
+      arrange(desc(pred_sample_mean), .by_group=TRUE)
     
-    rebalancing_dates = sort(unique(ssl_mix$date))
+    rebalancing_dates = sort(unique(ssl_sample$date))
     
     for (first_upper_bound in first_upper_bound_vec) {
       for (second_upper_plus in second_upper_plus_vec) {
@@ -101,7 +91,7 @@ upper_bound_calc = function(ssl1, ssl2, mix_ratio, top_n, first_bound=1.00, seco
             select(-adj_open_price) %>% 
             filter(date >= i) %>%
             filter(date <= rebalancing_dates[which(rebalancing_dates==i)+1]) %>%
-            filter(stock_cd %in% (ssl_mix %>% filter(date == i) %>% arrange(desc(pred_mix)) %>% dplyr::slice(1:top_n) %>% pull(stock_cd))) %>% 
+            filter(stock_cd %in% (ssl_sample %>% filter(date == i) %>% arrange(desc(pred_sample_mean)) %>% dplyr::slice(1:top_n) %>% pull(stock_cd))) %>% 
             group_by(stock_cd) %>% 
             mutate(adj_low_price = ifelse(adj_low_price == 0, adj_close_price, adj_low_price),
                    adj_high_price = ifelse(adj_high_price == 0, adj_close_price, adj_high_price)) %>% 
