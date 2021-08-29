@@ -203,5 +203,5 @@ topN_prec_calc = function(ssl, df, target_y, topN) {
     theme_minimal() +
     ggtitle(paste0("Top", topN, " Precision"))
   print(prec_plot)
-  return(prec_plot)
+  return(prec_df)
 }
