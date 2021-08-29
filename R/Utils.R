@@ -163,3 +163,45 @@ upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_
   
   print(paste0("[Hit Ratio] upper : ", max_hit_ratio_df$first_upper_bound, " / lower : ", max_hit_ratio_df$second_upper_bound, " / hit ratio : ", round(max_hit_ratio_df$hit_ratio, 4)))
 }
+
+#' @export
+auc_calc = function(ssl, df, target_y) {
+  auc_df =
+    ssl %>% 
+    select(date, stock_cd, pred_mean) %>% 
+    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
+    mutate(response = get(target_y)) %>% 
+    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
+    group_by(date) %>% 
+    summarize(AUC = Metrics::auc(response, pred_mean))
+  print(paste0("Average AUC : ", round(mean(auc_df$AUC, na.rm=T), 4)))
+  auc_plot =
+    ggplot(auc_df %>% filter(!is.na(AUC)), aes(x=date, y=AUC)) +
+    geom_line() +
+    theme_minimal() +
+    ggtitle("AUC")
+  print(auc_plot)
+  return(auc_df)
+}
+
+#' @export
+topN_prec_calc = function(ssl, df, target_y, topN) {
+  prec_df =
+    ssl %>% 
+    select(date, stock_cd, pred_mean) %>% 
+    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
+    mutate(response = get(target_y)) %>% 
+    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
+    group_by(date) %>% 
+    arrange(desc(pred_mean), .by_group=T) %>% 
+    dplyr::slice(1:topN) %>% 
+    summarize(Precision = sum(response)/topN)
+  print(paste0("Average Top", topN, " Precision : ", round(mean(prec_df$Precision, na.rm=T), 4)))
+  prec_plot =
+    ggplot(prec_df %>% filter(!is.na(Precision)), aes(x=date, y=Precision)) +
+    geom_line() +
+    theme_minimal() +
+    ggtitle(paste0("Top", topN, " Precision"))
+  print(prec_plot)
+  return(prec_plot)
+}
