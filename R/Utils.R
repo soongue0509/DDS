@@ -235,3 +235,39 @@ load_data = function(start_date = '20170104') {
   # Disconnect MySQL Server
   lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
 }
+
+#' @export
+upper_hoga_calc = 
+  function(market_gubun, my_price, upper_bound) {
+    if(market_gubun == 'KOSPI') {
+      if(my_price*upper_bound < 1000) {
+        sell_price = as.integer(ceiling(my_price*upper_bound))
+      } else if (my_price*upper_bound >= 1000 & my_price*upper_bound < 5000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 5) * 5)
+      } else if (my_price*upper_bound >= 5000 & my_price*upper_bound < 10000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 10) * 10)
+      } else if (my_price*upper_bound >= 10000 & my_price*upper_bound < 50000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 50) * 50)
+      } else if (my_price*upper_bound >= 50000 & my_price*upper_bound < 100000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 100) * 100)
+      } else if (my_price*upper_bound >= 100000 & my_price*upper_bound < 500000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 500) * 500)
+      } else {
+        sell_price = as.integer(ceiling(my_price*upper_bound / 1000) * 1000)
+      }
+    }
+    else {
+      if (my_price*upper_bound < 1000) {
+        sell_price = as.integer(ceiling(my_price*upper_bound))
+      } else if (my_price*upper_bound >= 1000 & my_price*upper_bound < 5000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 5) * 5)
+      } else if (my_price*upper_bound >= 5000 & my_price*upper_bound < 10000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 10) * 10)
+      } else if (my_price*upper_bound >= 10000 & my_price*upper_bound < 50000){
+        sell_price = as.integer(ceiling(my_price*upper_bound / 50) * 50)
+      } else {
+        sell_price = as.integer(ceiling(my_price*upper_bound / 100) * 100)
+      }
+    }
+    return(sell_price)
+  }
