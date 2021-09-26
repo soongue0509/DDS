@@ -561,6 +561,8 @@ shap_viz <- function(test_shap) {
     )
   }
   
+  # Start Visualization Code =====
+  
   feature_list <- 
     dbConnect(
       MySQL(),
@@ -569,34 +571,23 @@ shap_viz <- function(test_shap) {
       host = 'betterlife.duckdns.org',
       port = 1231 ,
       dbname = 'stock_db') %>% dbGetQuery("select * from feature_list_20210709")
+  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
   
   #label_format = "%.1e"
   label_format = "%.3f"
   
   data_temp = 
     test_shap %>% 
-    # 1. mean_value 연도별로 재계산
+    # 1. 매크로 변수 제외
+    left_join(feature_list %>% filter(category == 'Macro') %>% select(feature, category), by=c("variable"="feature")) %>% 
+    filter(is.na(category)) %>% 
+    select(-category) %>% 
+    # 2. mean_value 연도별로 재계산
     mutate(yyyy = substr(date, 1, 4)) %>% 
     group_by(yyyy, variable) %>% 
     mutate(mean_value = mean(mean_value)) %>% 
     ungroup() %>% 
-    # 2. 상위 N개 종목만 추출
-    inner_join(
-      test_shap %>% 
-        select(date, stock_cd, pred_mean) %>%
-        unique() %>% 
-        group_by(date) %>% 
-        arrange(desc(pred_mean), .by_group=T) %>% 
-        dplyr::slice(1:100) %>% 
-        ungroup() %>% 
-        select(date, stock_cd),
-      by=c("date", "stock_cd")) %>% 
-    # 3. 매크로 변수 제외
-    left_join(feature_list %>% filter(category == 'Macro') %>% select(feature, category), by=c("variable"="feature")) %>% 
-    filter(is.na(category)) %>% 
-    select(-category) %>% 
-    # 4.
-    select(-stock_cd, -pred_mean, -date)
+    select(-date, -stock_cd, -pred_mean)
   
   data_long =
     data_temp %>% 
