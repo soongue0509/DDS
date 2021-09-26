@@ -575,7 +575,12 @@ shap_viz <- function(test_shap) {
   
   data_temp = 
     test_shap %>% 
-    # 1. 상위 N개 종목만 추출
+    # 1. mean_value 연도별로 재계산
+    mutate(yyyy = substr(date, 1, 4)) %>% 
+    group_by(yyyy, variable) %>% 
+    mutate(mean_value = mean(mean_value)) %>% 
+    ungroup() %>% 
+    # 2. 상위 N개 종목만 추출
     inner_join(
       test_shap %>% 
         select(date, stock_cd, pred_mean) %>%
@@ -585,18 +590,13 @@ shap_viz <- function(test_shap) {
         dplyr::slice(1:50) %>% 
         ungroup() %>% 
         select(date, stock_cd),
-      by=c("date", "stock_cd")
-    ) %>% 
-    # 2. 매크로 변수 제외
+      by=c("date", "stock_cd")) %>% 
+    # 3. 매크로 변수 제외
     left_join(feature_list %>% filter(category == 'Macro') %>% select(feature, category), by=c("variable"="feature")) %>% 
     filter(is.na(category)) %>% 
     select(-category) %>% 
-    # 3. 연도별 주요 변수
-    mutate(yyyy = substr(date, 1, 4)) %>% 
-    select(-stock_cd, -pred_mean, -date) %>% 
-    group_by(yyyy, variable) %>% 
-    mutate(mean_value = mean(mean_value)) %>% 
-    ungroup()
+    # 4.
+    select(-stock_cd, -pred_mean, -date)
   
   data_long =
     data_temp %>% 
