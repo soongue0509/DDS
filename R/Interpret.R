@@ -587,7 +587,7 @@ shap_viz <- function(test_shap) {
         unique() %>% 
         group_by(date) %>% 
         arrange(desc(pred_mean), .by_group=T) %>% 
-        dplyr::slice(1:50) %>% 
+        dplyr::slice(1:100) %>% 
         ungroup() %>% 
         select(date, stock_cd),
       by=c("date", "stock_cd")) %>% 
