@@ -6,6 +6,8 @@
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
     
+    transaction_fee_rate = 0.00315
+    
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
       stop("topN length must be equal to ssl_list length")
@@ -84,7 +86,7 @@ backtest_portfolio =
     d_stock_price %<>%
       mutate(date=ymd(date),
              stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>% 
-      select(date, stock_cd, price=adj_close_price)
+      filter(date <= ymd(end_date))
     d_kospi_kosdaq_cum <-
       d_kospi_kosdaq %>%
       mutate(date = ymd(date)) %>% 
@@ -143,15 +145,16 @@ backtest_portfolio =
       risk_ratio_vec <- c()
       
       # Work =====
-      for(i in rebalancing_dates) {
+      for(k in rebalancing_dates) {
+        i = as.Date(k, origin = '1970-01-01')
         
         # Calculate Each Stock Return =====
         
         # Get Stock Price of Selected Stocks
         rets_temp <-
           d_stock_price %>%
+          # 1. 필요한 날짜만 필터링
           filter(date >= i) %>%
-          filter(date <= ymd(end_date)) %>%
           filter(date <= ifelse(i == max(rebalancing_dates),
                                 d_stock_price %>%
                                   select(date) %>%
@@ -161,7 +164,23 @@ backtest_portfolio =
                                   filter(id <= 3) %$%
                                   max(date),
                                 rebalancing_dates[which(rebalancing_dates==i)+1])) %>%
+          # 2. 선택된 종목만 필터링
           filter(stock_cd %in% (ssl_sn %>% filter(date == i) %>% slice_max(n=topN[l], order_by=get(pred_col[l])) %>% pull(stock_cd))) %>%
+          # 3-1. 익절/손절 가격 설정
+          group_by(stock_cd) %>% 
+          mutate(upper_price = ceiling((adj_close_price[1]*(1+upper_bound[l]))/(1-transaction_fee_rate)), 
+                 lower_price = ceiling((adj_close_price[1]*(1+lower_bound[l]))/(1-transaction_fee_rate))) %>% 
+          # 3-2. 익절/손절 여부 태깅
+          mutate(sell_cd = ifelse(lag(adj_high_price) > upper_price | lag(adj_low_price) < lower_price, NA, 1)) %>% 
+          mutate(sell_cd = cumprod(ifelse(row_number()==1, 1, sell_cd))) %>% 
+          # 3-3. 익절/손절 후 수익률 동결
+          mutate(price = case_when(adj_high_price > upper_price ~ upper_price*sell_cd,
+                                   adj_low_price < lower_price ~ lower_price*sell_cd,
+                                   TRUE ~ adj_close_price*sell_cd)) %>%
+          mutate(price = na.locf(price)) %>% 
+          ungroup() %>% 
+          select(stock_cd, date, price) %>% 
+          # 3-4. Spread
           spread(key = "stock_cd",
                  value = "price")
         rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
@@ -173,26 +192,13 @@ backtest_portfolio =
         for (s in 1:ssc) {
           rets_base <- cbind(rets_base, rets_temp %$% get(paste0('stock', s))[1])
           colnames(rets_base)[ncol(rets_base)] <- paste0("base", s)
-          rets_base %<>% mutate(return_temp = ( (get(paste0('stock',s)) * (1-0.00315)) -get(paste0('base',s)) ) / get(paste0('base',s)))
+          rets_base %<>% mutate(return_temp = ( (get(paste0('stock',s)) * (1-transaction_fee_rate)) -get(paste0('base',s)) ) / get(paste0('base',s)))
           colnames(rets_base)[ncol(rets_base)] <- paste0("return", s)
         }
         
-        rets <- rets_base %>% select(date, contains('return'))
-        
-        # Active Trading
-        active_rets = rets %>% select(-date)
-        idx <- ifelse(apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max) == 1 | apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max) == nrow(rets), -1, apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max)) + 1
-        for (j in 1:ncol(active_rets)) {
-          if (idx[j] != 0) {
-            active_rets[idx[j]:nrow(active_rets),j] <- NA
-          }
-        }
-        active_rets <- na.locf(active_rets)
-        active_rets
-        
+        rets_cum_temp <- rets_base %>% select(date, contains('return'))
+
         # Calculate Portfolio Return =====
-        
-        rets_cum_temp = cbind(date=rets[,"date"], active_rets)
         
         portfolio.returns <- c()
         
