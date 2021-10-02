@@ -833,6 +833,217 @@ backtest_portfolio_usa =
   }
 
 #' @export
+backtest_portfolio_vn =
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, upper_bound, lower_bound, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
+    
+    # Check Arugments =====
+    if(length(topN) != length(ssl_list)) {
+      stop("topN length must be equal to ssl_list length")
+    }
+    if(length(pred_col) != length(ssl_list)) {
+      stop("pred_col length must be equal to ssl_list length")
+    }
+    if(length(upper_bound) != length(ssl_list)) {
+      stop("upper_bound length must be equal to ssl_list length")
+    }
+    if(length(lower_bound) != length(ssl_list)) {
+      stop("lower_bound length must be equal to ssl_list length")
+    }
+    upper_bound[is.na(upper_bound)] = 999999
+    lower_bound[is.na(lower_bound)] = -999999
+    if(sum(upper_bound <= 0) > 0) {
+      stop("Upper selling bound must be greater than Zero")
+    }
+    if(sum(lower_bound >= 0) > 0) {
+      stop("Lower selling lower bound must be less than Zero")
+    }
+    
+    # Load Data if Needed =====
+    if(load_data == 'Y') {
+      library(RMySQL)
+      conn <- dbConnect(MySQL(), user = "betterlife", password = "snail132", 
+                        host = "betterlife.duckdns.org", port = 1231, dbname = "stock_vn")
+      dbSendQuery(conn, "SET NAMES utf8;")
+      dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+      dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+      
+      # Stock Price
+      d_stock_price <- dbGetQuery(conn, paste0("select * from stock_vn.stock_adj_price where date >= '", start_date, "';"))
+      # vn & hnx
+      d_vn_hnx <- dbGetQuery(conn, "select date, `vn`, `hnx` from stock_vn.macro_emerging where date >= '20150101';")
+
+      # Disconnect MySQL Server
+      lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+    }
+    
+    tic()
+    
+    # Prepare Data =====
+    d_stock_price %<>%
+      mutate(date=ymd(date)) %>% 
+      select(date, stock_cd, price=adj_close_price)
+    d_vn_hnx_cum <-
+      d_vn_hnx %>%
+      mutate(date = ymd(date)) %>% 
+      arrange(date) %>%
+      mutate(vn = (vn-lag(vn))/lag(vn),
+             hnx = (hnx - lag(hnx))/lag(hnx)) %>%
+      na.omit() %>% 
+      filter(date >= ymd(start_date)) %>%
+      filter(date <= ymd(end_date)) %>%
+      mutate(vn_cumret = cumprod(vn+1)-1, hnx_cumret = cumprod(hnx+1)-1)
+
+    # Start Simulation =====
+    rets_total <- data.frame()
+    for (l in 1:length(ssl_list)) {
+      # Pre-work =====
+      ssl <-
+        ssl_list[[l]] %>%
+        mutate(date = ymd(date)) %>% 
+        filter(date >= ymd(start_date) & date <= ymd(end_date)) %>% 
+        group_by(date) %>%
+        select(date, stock_cd, pred_col[l]) %>% 
+        arrange(desc(get(pred_col[l])), .by_group = TRUE) %>%
+        ungroup()
+      
+      # Sector Neutral =====
+      ssl_sn <- ssl
+      rebalancing_dates <- unique(ssl$date)
+      
+      rets_cum <- data.frame()
+      market_win_vec <- c()
+      risk_ratio_vec <- c()
+      
+      # Work =====
+      for(k in rebalancing_dates) {
+        i = as.Date(k, origin = '1970-01-01')
+        
+        # Calculate Each Stock Return =====
+        
+        # Get Stock Price of Selected Stocks
+        rets_temp <-
+          d_stock_price %>%
+          filter(date >= i) %>%
+          filter(date <= ymd(end_date)) %>%
+          filter(date <= ifelse(i == max(rebalancing_dates),
+                                d_stock_price %>%
+                                  select(date) %>%
+                                  unique() %>%
+                                  filter(substr(date, 1, 7) == max(substr(date, 1, 7))) %>%
+                                  mutate(id=row_number()) %>%
+                                  filter(id <= 3) %$%
+                                  max(date),
+                                rebalancing_dates[which(rebalancing_dates==i)+1])) %>%
+          filter(stock_cd %in% (ssl_sn %>% filter(date == i) %>% slice_max(n=topN[l], order_by=get(pred_col[l])) %>% pull(stock_cd))) %>%
+          spread(key = "stock_cd",
+                 value = "price")
+        rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
+        ssc = ncol(rets_temp)-1
+        names(rets_temp)[-1] <- paste0("stock", c(1 : ssc))
+        
+        # Calculate Daily Return with Tax
+        rets_base <- rets_temp
+        for (s in 1:ssc) {
+          rets_base <- cbind(rets_base, rets_temp %$% get(paste0('stock', s))[1])
+          colnames(rets_base)[ncol(rets_base)] <- paste0("base", s)
+          rets_base %<>% mutate(return_temp = ( (get(paste0('stock',s)) * (1-0.00315)) -get(paste0('base',s)) ) / get(paste0('base',s)))
+          colnames(rets_base)[ncol(rets_base)] <- paste0("return", s)
+        }
+        
+        rets <- rets_base %>% select(date, contains('return'))
+        
+        # Active Trading
+        active_rets = rets %>% select(-date)
+        idx <- ifelse(apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max) == 1 | apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max) == nrow(rets), -1, apply(t(apply(active_rets, 1, function(x){x > upper_bound[l] | x < lower_bound[l]})), 2, which.max)) + 1
+        for (j in 1:ncol(active_rets)) {
+          if (idx[j] != 0) {
+            active_rets[idx[j]:nrow(active_rets),j] <- NA
+          }
+        }
+        active_rets <- na.locf(active_rets)
+        active_rets
+        
+        # Calculate Portfolio Return =====
+        
+        rets_cum_temp = cbind(date=rets[,"date"], active_rets)
+        
+        portfolio.returns <- rets_cum_temp %>% mutate(pr = rowMeans(rets_cum_temp %>% select(-date))) %>% pull(pr) %>% unname()
+        
+        # Save Cumulative Return =====
+        if (nrow(rets_cum) == 0) {
+          rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date, return = portfolio.returns))
+        } else {
+          rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date[-1],
+                                                 return=((1+portfolio.returns[-1])*(1+rets_cum$return[nrow(rets_cum)])-1)))
+        }
+        
+        # Extra Metrics =====
+        # Monthly Win Ratio
+        
+        market_win_yn <-
+          d_vn_hnx_cum %>%
+          filter(date %in% rets_cum_temp$date) %>%
+          select(date, vn, hnx) %>%
+          #dplyr::slice(-1) %>%
+          mutate(vn_cumret = cumprod(1+vn)-1, hnx_cumret = cumprod(1+hnx)-1) %>% 
+          mutate(market_cumret = (vn_cumret+hnx_cumret)/2) %$%
+          market_cumret[nrow(.)] < portfolio.returns[length(portfolio.returns)]
+        
+        market_win_vec <- c(market_win_vec, market_win_yn)
+        
+        # Risk Ratio
+        risk_ratio_vec <- c(risk_ratio_vec, portfolio.returns[length(portfolio.returns)])
+      }
+      
+      # Post-work =====
+      model_nm_temp =
+        paste0(
+          str_pad(l, side='left', width=2, pad='0'), ".",
+          pred_col[l], ", ",
+          "Top", topN[l],
+          ifelse(upper_bound[l]==999999 & lower_bound[l]==-999999, " [", paste0(", Sell Bound: (", ifelse(lower_bound[l]==-999999, "None", lower_bound[l]), ", ", ifelse(upper_bound[l]==999999, "None", upper_bound[l]), ") [")),
+          "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
+          "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
+          "Stability: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec), 2), ", ",
+          "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
+        )
+      
+      rets_total <- rbind(rets_total, rets_cum %>% mutate(model_nm = model_nm_temp))
+      print(model_nm_temp)
+    }
+    
+    # Prepare Plot =====
+    rets_total <- rbind(rets_total,
+                        d_vn_hnx_cum %>% select(date, return=vn_cumret) %>% mutate(model_nm = "vn") %>% filter(date <= max(rets_total$date)),
+                        d_vn_hnx_cum %>% select(date, return=hnx_cumret) %>% mutate(model_nm = "hnx") %>% filter(date <= max(rets_total$date)))
+    
+    toc()
+    
+    rets_total %>% mutate(label = if_else(date == max(date), as.character(round(return,2)), NA_character_)) %>%
+      ggplot(aes(x=ymd(date), y=return, col=model_nm)) +
+      geom_line(size=1.1) +
+      theme_minimal() +
+      ggtitle("Portfolio Return") +
+      theme(legend.position = c(0.01, 0.99),
+            legend.justification = c(0, 1),
+            legend.text=element_text(size=8),
+            legend.title=element_blank(),
+            legend.key = element_rect(fill="transparent", colour = "transparent"),
+            legend.background = element_rect(fill="transparent", colour = "transparent")
+      ) +
+      scale_x_date(date_labels="%Y-%m",date_breaks  ="6 month") +
+      xlab("Date") +
+      ylab("Cumulative Return") +
+      ylim(min(rets_total$return), max(rets_total$return)+(max(rets_total$return)*0.2)) +
+      labs(caption = paste0(min(rets_total$date), ' / ', max(rets_total$date))) +
+      geom_label_repel(aes(label = label),
+                       nudge_x = 1,
+                       na.rm = TRUE,
+                       show.legend = FALSE) +
+      ggtitle(test_title)
+  }
+
+#' @export
 return_tile = function(ssl_input, topN, pred_col) {
 
   if(!"target_1m_return" %in% colnames(ssl_input)){
