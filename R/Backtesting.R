@@ -156,13 +156,7 @@ backtest_portfolio =
           # 1. 필요한 날짜만 필터링
           filter(date >= i) %>%
           filter(date <= ifelse(i == max(rebalancing_dates),
-                                d_stock_price %>%
-                                  select(date) %>%
-                                  unique() %>%
-                                  filter(substr(date, 1, 7) == max(substr(date, 1, 7))) %>%
-                                  mutate(id=row_number()) %>%
-                                  filter(id <= 3) %$%
-                                  max(date),
+                                ymd(end_date),
                                 rebalancing_dates[which(rebalancing_dates==i)+1])) %>%
           # 2. 선택된 종목만 필터링
           filter(stock_cd %in% (ssl_sn %>% filter(date == i) %>% slice_max(n=topN[l], order_by=get(pred_col[l])) %>% pull(stock_cd))) %>%
