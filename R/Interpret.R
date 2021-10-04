@@ -570,7 +570,7 @@ shap_viz <- function(test_shap) {
       password = 'snail132',
       host = 'betterlife.duckdns.org',
       port = 1231 ,
-      dbname = 'stock_db') %>% dbGetQuery("select * from feature_list_20211004")
+      dbname = 'stock_db') %>% dbGetQuery("select * from feature_list")
   lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
   
   #label_format = "%.1e"
