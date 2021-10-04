@@ -105,7 +105,7 @@ explain_why = function(shap, topN, inv_date, macro_yn=FALSE) {
       filter(date == max(date)) %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean)
   } else {
-    feature_list <- dbGetQuery(stock_db_connection, "select * from feature_list_20211004")
+    feature_list <- dbGetQuery(stock_db_connection, "select * from feature_list")
     temp <- 
       shap %>% 
       filter(date == max(date)) %>% 
