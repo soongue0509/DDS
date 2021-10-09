@@ -262,7 +262,7 @@ backtest_portfolio =
           "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
           "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
           "MDD: ", round(min(risk_ratio_vec), 2), ", ",
-          "Stability: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec) * sqrt(ssl %>% select(date) %>% unique() %>% group_by(yyyy=substr(date, 1, 4)) %>% count() %>% pull(n) %>% max()), 2), ", ",
+          "Stability: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec) * sqrt(rebalancing_dates %>% substr(1, 4) %>% table() %>% max()), 2), ", ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
       
