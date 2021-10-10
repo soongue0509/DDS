@@ -4,7 +4,7 @@
 
 #' @export
 backtest_portfolio =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170104', end_date = '99991231', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_data = 'Y') {
     
     transaction_fee_rate = 0.00315
     
