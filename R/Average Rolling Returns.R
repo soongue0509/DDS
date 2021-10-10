@@ -12,7 +12,7 @@ rollret = function(ssl, top_n = 10, roll_period = 6, ensemble_n = 50, boot_n = 5
     cols = sample(colnames(ssl)[str_detect(colnames(ssl), "pred") & !str_detect(colnames(ssl), "mean")], ensemble_n, replace = T)
     ref[,paste0('pred_mean_',iter)] = rowMeans(ssl %>% select(all_of(cols)))
 
-    temp = ref %>% mutate(target_1m_return = ifelse(mean(target_1m_return)>0.5,0.5,mean(target_1m_return))) %>%
+    temp = ref %>% mutate(target_1m_return = ifelse(target_1m_return>0.5,0.5,target_1m_return)) %>%
       group_by(date) %>% arrange(desc(get(paste0('pred_mean_',iter)))) %>%
       dplyr::slice(1:top_n) %>%
       summarise(ret = target_1m_return + 1) %>%
@@ -55,7 +55,7 @@ rollret_mix = function(ssl1, ssl2, top_n = 10, roll_period = 6, ensemble_n = 50,
                  mutate(wt = (as.numeric(gsub('V','',variable))-1)/10) %>% select(-variable) %>% rename(pred = value)
 
                mix =
-                 mix %>% mutate(target_1m_return = ifelse(mean(target_1m_return)>0.5,0.5,mean(target_1m_return))) %>%
+                 mix %>% mutate(target_1m_return = ifelse(target_1m_return>0.5,0.5,target_1m_return)) %>%
                  group_by(date,wt) %>% arrange(desc(pred)) %>% dplyr::slice(1:top_n) %>%
                  summarise(ret = mean(target_1m_return)+1) %>%
                  group_by(wt) %>% arrange(date, .by_group=T) %>%
