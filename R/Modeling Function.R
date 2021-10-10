@@ -529,3 +529,72 @@ modeling_func_parallel = function(df, target_y, title = "", train_span=36, push_
   saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
   return(ssl)
 }
+
+#' @export
+market_updown_pred <- function(ssl_wo_macro, lookup_span) {
+  
+  # Get Market =====
+  conn <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231 ,
+    dbname = 'stock_db'
+  )
+  dbSendQuery(conn, "SET NAMES utf8;") 
+  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+  korea_return = 
+    dbGetQuery(conn, "select * from stock_kospi_kosdaq where date >= '20101201'") %>% 
+    mutate(date = ymd(date)) %>% 
+    filter(date %in% unique(ssl_wo_macro$date)) %>% 
+    select(date, kospi, kosdaq) %>% 
+    mutate(kospi = (lead(kospi)-kospi)/kospi,
+           kosdaq = (lead(kosdaq)-kosdaq)/kosdaq) %>% 
+    mutate(korea = (kospi+kosdaq)/2) %>% 
+    select(date, korea) # calculate korean market leading return
+  lapply(dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+  
+  rebalancing_dates = unique(korea_return$date)
+  
+  market_pred_df = data.frame()
+  # Start Process =====
+  for (i in (1:(length(rebalancing_dates)-lookup_span))) {
+    ssl_temp = ssl_wo_macro %>% filter(date >= rebalancing_dates[i] & date <= rebalancing_dates[i+lookup_span-1])
+    
+    # 1. Find Threshold =====
+    threshold_df = 
+      ssl_temp %>% 
+      group_by(date) %>% 
+      # arrange(desc(pred_mean), .by_group=T) %>% 
+      # dplyr::slice(1:100) %>%
+      summarize(prob_mean = mean(pred_mean)) %>%
+      inner_join(korea_return, by="date") %>% 
+      mutate(korea_updown = ifelse(korea > 0, 1, 0)) %>% 
+      select(date, prob_mean, korea_updown)
+    
+    th_temp = roc(threshold_df$korea_updown, threshold_df$prob_mean, quiet=T)
+    opt_th = coords(th_temp, "best", ret = "threshold", transpose = T) %>% as.numeric()
+    
+    # 2. Prediction =====
+    nxt_month_prob_mean = 
+      ssl_wo_macro %>% 
+      filter(date == rebalancing_dates[i+lookup_span]) %>% 
+      # arrange(desc(pred_mean), .by_group=T) %>% 
+      # dplyr::slice(1:100) %>% 
+      summarize(prob_mean = mean(pred_mean)) %>% 
+      pull(prob_mean)
+    
+    market_pred_df <-
+      rbind(market_pred_df,
+            data.frame(date = rebalancing_dates[i+lookup_span], 
+                       prob_mean = nxt_month_prob_mean,
+                       threshold = opt_th,
+                       pred = as.numeric(nxt_month_prob_mean >= opt_th),
+                       korea_updown = ifelse((korea_return %>% filter(date == rebalancing_dates[i+lookup_span]) %>% pull(korea)) > 0, 1, 0)
+            ))
+    print(rebalancing_dates[i+lookup_span])
+  }
+  return(market_pred_df)
+}
