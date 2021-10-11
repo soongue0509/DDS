@@ -72,10 +72,8 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
   print(paste0("Surplus: ", surplus))
 
   if (view_method == "long") {
-    View(final_result)
     return(final_result)
   } else {
-    View(t(final_result))
     return(t(final_result))
   }
 }
