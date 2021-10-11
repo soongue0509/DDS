@@ -4,6 +4,8 @@
 #' @export
 modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', focal_loss_yn = 'N') {
   
+  pred_start_date = ymd(pred_start_date)
+  
   sigmoid = function(x) {
     1 / (1 + exp(-x))
   }
