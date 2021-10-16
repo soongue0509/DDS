@@ -207,7 +207,7 @@ topN_prec_calc = function(ssl, df, target_y, topN) {
 }
 
 #' @export
-load_data = function(start_date = '20170104') {
+load_data = function(start_date = '20150101') {
   library(RMySQL)
   conn <- dbConnect(
     MySQL(),
