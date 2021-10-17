@@ -120,6 +120,8 @@ backtest_portfolio =
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
       
+      if (end_date == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
+      
       # Remove Gwanli Stocks =====
       if(include_issue[l] == 'N') {
         ssl <- ssl %>% left_join(issue_df %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(issue)) %>% select(-issue)
@@ -164,7 +166,7 @@ backtest_portfolio =
           filter(stock_cd %in% (ssl_sn %>% filter(date == i) %>% slice_max(n=topN[l], order_by=get(pred_col[l])) %>% pull(stock_cd))) %>%
           # 3-1. 익절/손절 가격 설정
           group_by(stock_cd) %>% 
-          # mutate(adj_close_price = ifelse(row_number()==1, lead(adj_open_price, 1), adj_close_price)) %>% 
+          mutate(adj_close_price = ifelse(row_number()==1, lead(adj_open_price, 1), adj_close_price)) %>% 
           mutate(upper_price = ceiling((adj_close_price[1]*(1+upper_bound[l]))/(1-transaction_fee_rate)), 
                  lower_price = ceiling((adj_close_price[1]*(1+lower_bound[l]))/(1-transaction_fee_rate))) %>% 
           # 3-2. 익절/손절 여부 태깅
