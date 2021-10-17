@@ -7,6 +7,7 @@ backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_data = 'Y') {
     
     transaction_fee_rate = 0.00315
+    start_date = str_replace_all(start_date, '-', '')
     
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
@@ -88,6 +89,7 @@ backtest_portfolio =
              stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>% 
       mutate(adj_low_price = ifelse(adj_low_price == 0, adj_close_price, adj_low_price)) %>% 
       mutate(adj_high_price = ifelse(adj_high_price == 0, adj_close_price, adj_high_price)) %>% 
+      mutate(adj_open_price = ifelse(adj_open_price == 0, adj_close_price, adj_open_price)) %>% 
       filter(date <= ymd(end_date))
     d_kospi_kosdaq_cum <-
       d_kospi_kosdaq %>%
@@ -119,8 +121,6 @@ backtest_portfolio =
         arrange(desc(get(pred_col[l])), .by_group = TRUE) %>%
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
-      
-      if (end_date == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
       
       # Remove Gwanli Stocks =====
       if(include_issue[l] == 'N') {
@@ -174,10 +174,10 @@ backtest_portfolio =
           mutate(sell_cd = cumprod(ifelse(row_number()==1, 1, sell_cd))) %>% 
           mutate(sell_cd = ifelse(row_number() == 2, 1, sell_cd)) %>% 
           # 3-3. 익절/손절 후 수익률 동결
-          mutate(price = case_when(adj_high_price > upper_price & row_number() != 1 ~ upper_price * sell_cd, 
-                                   adj_low_price < lower_price & row_number() != 1 ~ lower_price * sell_cd, 
-                                   TRUE ~ adj_close_price * sell_cd)) %>% 
-          mutate(price = na.locf(price)) %>% 
+          mutate(price = case_when(adj_high_price > upper_price & row_number() != 1 ~ upper_price * sell_cd,
+                                   adj_low_price < lower_price & row_number() != 1 ~ lower_price * sell_cd,
+                                   TRUE ~ adj_close_price * sell_cd)) %>%
+          mutate(price = na.locf0(price)) %>% 
           ungroup() %>% 
           select(stock_cd, date, price) %>% 
           # 3-4. Spread
@@ -265,7 +265,7 @@ backtest_portfolio =
           ifelse(sum(is.na(weight_list[l][[1]])) == 0, paste0(", Weight: Y  ["), "  ["),
           "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
           "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
-          "MDD: ", data.frame(pr = risk_ratio_vec) %>% mutate(cumret = cumprod(pr+1)-1) %>% mutate(preceding_max = cummax(cumret)) %>% mutate(mdd = (cumret-preceding_max)/preceding_max) %>% filter(cumret >= 0) %>% pull(mdd) %>% min() %>% round(2), ", ",
+          "MDD: ", data.frame(pr = risk_ratio_vec) %>% mutate(cumret = cumprod(pr+1)) %>% mutate(preceding_max = cummax(cumret)) %>% mutate(mdd = (cumret-preceding_max)/preceding_max) %>% pull(mdd) %>% min() %>% round(2), ", ",
           "SR: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec) * sqrt(rebalancing_dates %>% substr(1, 4) %>% table() %>% median()), 2), ", ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
