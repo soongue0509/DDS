@@ -175,7 +175,7 @@ backtest_portfolio =
           mutate(price = case_when(adj_high_price > upper_price ~ upper_price*sell_cd,
                                    adj_low_price < lower_price ~ lower_price*sell_cd,
                                    TRUE ~ adj_close_price*sell_cd)) %>%
-          mutate(price = na.locf(price)) %>% 
+          mutate(price = na.locf0(price)) %>% 
           ungroup() %>% 
           select(stock_cd, date, price) %>% 
           # 3-4. Spread
