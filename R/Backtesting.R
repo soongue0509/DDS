@@ -184,7 +184,8 @@ backtest_portfolio =
           select(stock_cd, date, price) %>% 
           # 3-4. Spread
           spread(key = "stock_cd",
-                 value = "price")
+                 value = "price") %>% 
+          select_if(~ !any(is.na(.)))
         rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
         ssc = ncol(rets_temp)-1
         names(rets_temp)[-1] <- paste0("stock", c(1 : ssc))
