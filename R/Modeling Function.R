@@ -271,6 +271,25 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     saveRDS(shap_train_df, paste0("trainSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
     saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
   }
+  if(upload_db_yn == 'Y'){
+    conn <- dbConnect(
+      MySQL(),
+      user = 'betterlife',
+      password = 'snail132',
+      host = 'betterlife.duckdns.org',
+      port = 1231 ,
+      dbname = 'stock_db')
+    dbSendQuery(conn, "SET NAMES utf8;") 
+    dbSendQuery(conn, "SET CHARACTER SET utf8mb4;") 
+    dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+    
+    dbWriteTable(conn,
+                 value = ssl %>% select(date, stock_cd, pred_mean) %>% as.data.frame(),
+                 name = paste0("ssl_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y,"_n", ensemble_n),
+                 append = FALSE,
+                 overwrite = TRUE,
+                 row.names = FALSE)
+  }
   return(ssl)
 }
 
