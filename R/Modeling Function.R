@@ -2,9 +2,10 @@
 # Return and Save Selected Stock List (SSL)
 
 #' @export
-modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', focal_loss_yn = 'N') {
+modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', focal_loss_yn = 'N', load_to_db = FALSE) {
   
   pred_start_date = ymd(pred_start_date)
+  if(!is.logical(load_to_db)) stop("load_to_db must be logical")
   
   sigmoid = function(x) {
     1 / (1 + exp(-x))
@@ -271,7 +272,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     saveRDS(shap_train_df, paste0("trainSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
     saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
   }
-  if(upload_db_yn == 'Y'){
+  if(load_to_db){
     conn <- dbConnect(
       MySQL(),
       user = 'betterlife',
