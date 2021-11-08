@@ -290,6 +290,8 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
                  append = FALSE,
                  overwrite = TRUE,
                  row.names = FALSE)
+    
+    lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
   }
   return(ssl)
 }
