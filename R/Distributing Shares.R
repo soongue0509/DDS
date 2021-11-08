@@ -17,8 +17,8 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
   dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
   dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
 
-  #print(paste0("SSL Date: ", str_replace_all(ssl %>% filter(date == max(date)) %>% pull(date) %>% unique(), '-', '')))
-  #print(paste0("Inv Date: ", inv_date))
+  print(paste0("SSL Date: ", str_replace_all(ssl %>% filter(date == max(date)) %>% pull(date) %>% unique(), '-', '')))
+  print(paste0("Inv Date: ", inv_date))
 
   # Read Data
   sector_info = dbGetQuery(stock_db_connection, paste0("select * from stock_market_sector where date = '", inv_date,"';"))
@@ -68,8 +68,8 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
     mutate(proportion = paste0(round((cnt_temp*price) / sum(cnt_temp*price) * 100, 2), '%'), amt=price*cnt_temp) %>%
     select(stock_cd, stock_nm, market, all_of(pred_col), cnt=cnt_temp, amt, proportion, last_close_price=price)
 
-  #print("============================================================================")
-  #print(paste0("Surplus: ", surplus))
+  print("============================================================================")
+  print(paste0("Surplus: ", surplus))
 
   if (view_method == "long") {
     return(final_result)
