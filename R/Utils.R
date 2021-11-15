@@ -42,6 +42,7 @@ ssl_bind <- function(ssl1, ssl2, topN) {
     summarize(pred_mean = mean(pred_mean),
               target_1m_return = unique(target_1m_return),
               gubun = ifelse(n() == 2, 'both', gubun)) %>% 
+    ungroup() %>% 
     arrange(date, stock_cd)
   return(result)
 }
