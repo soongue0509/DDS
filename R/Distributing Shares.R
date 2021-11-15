@@ -81,7 +81,11 @@ how_many_shares = function(ssl, inv_date, seed_money, pred_col, topN=30, view_me
 # SHAP for chosen stocks
 
 #' @export
-explain_why = function(shap, topN, inv_date, macro_yn=FALSE) {
+explain_why = function(shap, topN, macro_yn=FALSE) {
+  
+  if(length(unique(shap$date)) != 1) {
+    stop("There must be only one date in SHAP data.")
+  }
   
   stock_db_connection <- dbConnect(
     MySQL(),
@@ -95,23 +99,25 @@ explain_why = function(shap, topN, inv_date, macro_yn=FALSE) {
   dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
   dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
   
+  inv_date = str_replace_all(unique(shap$date),'-','')
+  
   stock_nm = dbGetQuery(stock_db_connection, paste0("select stock_cd, stock_nm from stock_market_sector where date = '", inv_date,"';"))
   
   if (macro_yn == TRUE) {
     temp <- 
       shap %>% 
-      filter(date == max(date)) %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean)
   } else {
     feature_list <- dbGetQuery(stock_db_connection, "select * from feature_list")
     temp <- 
       shap %>% 
-      filter(date == max(date)) %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean) %>% 
       left_join(feature_list %>% filter(category == 'Macro') %>% select(feature, category), by=c("variable"="feature")) %>% 
       filter(is.na(category)) %>% 
       select(-category)
   }
+  
+  lapply(dbListConnections(dbDriver(drv = "MySQL")), dbDisconnect)
   
   plot_df <-
     temp %>% 
