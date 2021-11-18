@@ -300,7 +300,7 @@ backtest_portfolio =
       xlab("Date") +
       ylab("Cumulative Return") +
       ylim(min(rets_total$return), max(rets_total$return)+(max(rets_total$return)*0.2)) +
-      labs(caption = paste0(str_replace_all(min(rets_total$date),'-','.'), ' ~ ', str_replace_all(max(rets_total$date),'-','.'), '\nCreated: ', str_replace_all(Sys.Date(),'-','.'))) +
+      labs(caption = paste0("Backtest: ", str_replace_all(min(rets_total$date),'-','.'), ' ~ ', str_replace_all(max(rets_total$date),'-','.'), '\nCreated: ', str_replace_all(Sys.Date(),'-','.'))) +
       geom_label_repel(aes(label = label),
                        nudge_x = 1,
                        na.rm = TRUE,
