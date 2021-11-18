@@ -279,7 +279,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
       password = 'snail132',
       host = 'betterlife.duckdns.org',
       port = 1231 ,
-      dbname = 'stock_db')
+      dbname = 'ssl_db')
     dbSendQuery(conn, "SET NAMES utf8;") 
     dbSendQuery(conn, "SET CHARACTER SET utf8mb4;") 
     dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
