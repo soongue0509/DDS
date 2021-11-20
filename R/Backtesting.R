@@ -87,6 +87,8 @@ backtest_portfolio =
     d_stock_price %<>%
       mutate(date=ymd(date),
              stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>% 
+      # 상폐만 0원으로 처리하려면 아래 한 줄 주석처리 : 거래정지는 정지 시점의 종가로 계산
+      # mutate(adj_close_price = ifelse(adj_open_price == 0 & adj_high_price == 0 & adj_low_price == 0 & adj_trading_volume == 0 & adj_close_price != 0, NA, adj_close_price)) %>%
       mutate(adj_low_price = ifelse(adj_low_price == 0, adj_close_price, adj_low_price)) %>% 
       mutate(adj_high_price = ifelse(adj_high_price == 0, adj_close_price, adj_high_price)) %>% 
       mutate(adj_open_price = ifelse(adj_open_price == 0, adj_close_price, adj_open_price)) %>% 
