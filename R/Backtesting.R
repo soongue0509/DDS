@@ -124,7 +124,7 @@ backtest_portfolio =
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
       
-      if (ymd(end_date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
+      if (ymd(end_date) == max(ssl$date) | max(d_stock_price$date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
       
       # Remove Gwanli Stocks =====
       if(include_issue[l] == 'N') {
