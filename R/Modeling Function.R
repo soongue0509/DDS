@@ -285,11 +285,13 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
     
     dbWriteTable(conn,
-                 value = ssl %>% select(date, stock_cd, pred_mean) %>% as.data.frame(),
                  name = paste0("ssl_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y,"_n", ensemble_n),
-                 append = FALSE,
+                 value = ssl %>% select(date, stock_cd, pred_mean) %>% as.data.frame(),
+                 row.names = FALSE,
                  overwrite = TRUE,
-                 row.names = FALSE)
+                 append = FALSE,
+                 field.types = field.types = c(date="varchar(10)", stock_cd="varchar(6)", pred_mean="double")
+                 )
     
     lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
   }
