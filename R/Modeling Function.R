@@ -290,7 +290,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
                  row.names = FALSE,
                  overwrite = TRUE,
                  append = FALSE,
-                 field.types = field.types = c(date="varchar(10)", stock_cd="varchar(6)", pred_mean="double")
+                 field.types = c(date="varchar(10)", stock_cd="varchar(6)", pred_mean="double")
                  )
     
     lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
