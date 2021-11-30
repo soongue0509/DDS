@@ -18,6 +18,8 @@ prep_data = function(df, beg_date = '2011-01-01'){
 #' @export
 get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_date = '20211001', min_years_listed = 2, min_tr_amount = 100000000) {
   
+  extract_start_date <- str_replace_all(extract_start_date, '-', '')
+  
   if (!period_gb %in% c("Monthly", "Bi-Weekly", "Weekly")) stop ("period_gb must be one of 'Monthly', 'Bi-Weekly', 'Weekly'")
   if (period_gb == 'Monthly' & is.numeric(bizday) == FALSE) stop ("bizday must be integer between 1 and 20, if period_gb is chosen as 'Monthly'.")
   
