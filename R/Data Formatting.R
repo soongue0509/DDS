@@ -65,7 +65,7 @@ get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_d
   
   # 금융주 제거 ===
   fin_stock_cd <- 
-    dbGetQuery(conn, paste0("select date, stock_cd, stock_nm from stock_db.stock_market_sector where date in (", paste0(dates_needed, collapse=','),") and stock_nm rlike '(은행|카드|증권|보험|코리안리|미래에셋대우|자산관리|금융|글로벌텍스프리|창투|인베스트|모기지|CNH|우리파이낸셜|캐피탈|화재|해상|신한지주|신한알파리츠|삼성생명|동양생명|한화생명|미래에셋생명|아이엔지생명|투자|종금|스팩|에이플러스에셋|\\d+호|한국토지신탁)'"))
+    dbGetQuery(conn, paste0("select date, stock_cd, stock_nm from stock_db.stock_market_sector where date in (", paste0(dates_needed, collapse=','),") and stock_nm rlike '(은행|카드|증권|보험|코리안리|미래에셋대우|자산관리|금융|글로벌텍스프리|창투|인베스트|모기지|CNH|우리파이낸셜|캐피탈|화재|해상|신한지주|신한알파리츠|삼성생명|동양생명|한화생명|미래에셋생명|아이엔지생명|투자|종금|스팩|에이플러스에셋|[0-9]호|한국토지신탁)'"))
   step3 <-
     step2 %>% 
     left_join(fin_stock_cd, by=c("date", "stock_cd")) %>% 
