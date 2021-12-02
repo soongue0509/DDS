@@ -75,10 +75,10 @@ get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_d
   
   # 거래대금 N억 제거 ===
   rtr <-
-    dbGetQuery(conn, paste0("select stock_cd, date, adj_close_price*adj_trading_volume as tr_amount from stock_adj_price where date >= ", str_replace_all(ymd(extract_start_date) - 20, '-', ''))) %>% 
+    dbGetQuery(conn, paste0("select stock_cd, date, transaction_amount from stock_db.stock_daily_technical where date >= ", str_replace_all(ymd(extract_start_date) - 20, '-', ''))) %>% 
     group_by(stock_cd) %>% 
     arrange(date) %>% 
-    mutate(rolling_tr_amount = rollapply(tr_amount, 5, mean, align = 'right', fill = 0)) %>% 
+    mutate(rolling_tr_amount = rollapply(transaction_amount, 5, mean, align = 'right', fill = 0)) %>% 
     select(stock_cd, date, rolling_tr_amount)
   step4 <-
     step3 %>% 
