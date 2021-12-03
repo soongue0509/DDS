@@ -56,7 +56,8 @@ get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_d
   step1 <-
     step0 %>% 
     group_by(date) %>%
-    mutate_at(vars(ends_with("ttm")), function(x){rank_norm(x)})
+    mutate_at(vars(ends_with("ttm")), function(x){rank_norm(x)}) %>%
+    ungroup()
   
   # 2. 거래대금 N억 제거 ===
   rtr <-
@@ -76,7 +77,8 @@ get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_d
     step2 %>% 
     group_by(date) %>%
     mutate(tr = rank_norm(tr),
-           transaction_amount_1w_mean = rank_norm(transaction_amount_1w_mean))
+           transaction_amount_1w_mean = rank_norm(transaction_amount_1w_mean)) %>%
+    ungroup()
   
   # 4. PBR&PSR 음수 제거 ===
   step4 <-
