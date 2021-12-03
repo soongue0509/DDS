@@ -65,7 +65,8 @@ get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_d
     group_by(stock_cd) %>% 
     arrange(date) %>% 
     mutate(rolling_tr_amount = rollapply(transaction_amount, 5, mean, align = 'right', fill = 0)) %>% 
-    select(stock_cd, date, rolling_tr_amount)
+    select(stock_cd, date, rolling_tr_amount) %>%
+    ungroup()
   step2 <-
     step1 %>% 
     left_join(rtr, by=c("date", "stock_cd")) %>% 
