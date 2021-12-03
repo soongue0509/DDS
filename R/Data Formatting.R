@@ -60,18 +60,9 @@ get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_d
     ungroup()
   
   # 2. 거래대금 N억 제거 ===
-  rtr <-
-    dbGetQuery(conn, paste0("select stock_cd, date, transaction_amount from stock_db.stock_daily_technical where date >= ", str_replace_all(ymd(extract_start_date) - 20, '-', ''))) %>% 
-    group_by(stock_cd) %>% 
-    arrange(date) %>% 
-    mutate(rolling_tr_amount = rollapply(transaction_amount, 5, mean, align = 'right', fill = 0)) %>% 
-    select(stock_cd, date, rolling_tr_amount) %>%
-    ungroup()
   step2 <-
     step1 %>% 
-    left_join(rtr, by=c("date", "stock_cd")) %>% 
-    filter(rolling_tr_amount >= min_tr_amount) %>% 
-    select(-rolling_tr_amount)
+    filter(transaction_amount_1w_mean >= min_tr_amount)
   
   # 3. TR, TR1W Rank-Normalize ===
   step3 <-
