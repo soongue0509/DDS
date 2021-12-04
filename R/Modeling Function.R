@@ -2,7 +2,7 @@
 # Return and Save Selected Stock List (SSL)
 
 #' @export
-modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', load_to_db = FALSE) {
+modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', load_to_db = FALSE, dt=str_replace_all(Sys.Date(), '-', '')) {
 
   pred_start_date = ymd(pred_start_date)
   if(!is.logical(load_to_db)) stop("load_to_db must be logical")
@@ -219,10 +219,10 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     ssl <- rbind(ssl, selected_stock_cd_list[[i]])
   }
   ssl %<>% left_join(df %>% select(date, stock_cd, target_1m_return), by = c('date', 'stock_cd'))
-  saveRDS(ssl, paste0("ssl_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y," (n", ensemble_n, ").RDS"))
+  saveRDS(ssl, paste0("ssl_",dt, "_",title, "_", target_y," (n", ensemble_n, ").RDS"))
   if(explain_yn == 'Y'){
-    saveRDS(shap_train_df, paste0("trainSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
-    saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y, ".RDS"))
+    saveRDS(shap_train_df, paste0("trainSHAP_",dt, "_",title, "_", target_y, ".RDS"))
+    saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",dt, "_",title, "_", target_y, ".RDS"))
   }
   if(load_to_db){
     conn <- dbConnect(
@@ -237,7 +237,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
 
     dbWriteTable(conn,
-                 name = paste0("ssl_",str_replace_all(Sys.Date(), '-', ''), "_",title, "_", target_y,"_n", ensemble_n),
+                 name = paste0("ssl_",dt, "_",title, "_", target_y,"_n", ensemble_n),
                  value = ssl %>% select(date, stock_cd, pred_mean) %>% as.data.frame(),
                  row.names = FALSE,
                  overwrite = TRUE,
