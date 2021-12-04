@@ -235,7 +235,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     dbSendQuery(conn, "SET NAMES utf8;")
     dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
     dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
-
+    dbSendQuery(conn, "SET GLOBAL local_infile=1;")
     dbWriteTable(conn,
                  name = paste0("ssl_",dt, "_",title, "_", target_y,"_n", ensemble_n),
                  value = ssl %>% select(date, stock_cd, pred_mean) %>% as.data.frame(),
