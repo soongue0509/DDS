@@ -57,6 +57,7 @@ get_modeling_data <- function(period_gb = "Monthly", bizday = 3, extract_start_d
     step0 %>% 
     group_by(date) %>%
     mutate_at(vars(ends_with("ttm")), function(x){rank_norm(x)}) %>%
+    mutate_at(c('o_cfr', 'o_per', 'pbr', 'per', 'psr'), function(x){rank_norm(x)}) %>%
     ungroup()
   
   # 2. 거래대금 N억 제거 ===
