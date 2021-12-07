@@ -312,7 +312,7 @@ backtest_portfolio =
 
 #' @export
 backtest_portfolio_tic =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170101', end_date = '20201230', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20180101', end_date = '20201230', load_data = 'Y') {
     
     transaction_fee_rate = 0.00315
     start_date = str_replace_all(start_date, '-', '')
@@ -337,8 +337,8 @@ backtest_portfolio_tic =
     }
     
     # Check Arugments =====
-    if(ymd(start_date) < '2016-01-04') {
-      stop("Start Date must be greater than or equal to '20160104'")
+    if(ymd(start_date) < '2018-01-04') {
+      stop("Start Date must be greater than or equal to '20180104'")
     }
     if(ymd(end_date) > '2020-12-30') {
       stop("End Date must be less than or equal to '20201230'")
