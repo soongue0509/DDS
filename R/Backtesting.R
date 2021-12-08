@@ -337,8 +337,8 @@ backtest_portfolio_tic =
     }
     
     # Check Arugments =====
-    if(ymd(start_date) < '2018-01-04') {
-      stop("Start Date must be greater than or equal to '20180104'")
+    if(ymd(start_date) < '2017-01-04') {
+      stop("Start Date must be greater than or equal to '20170104'")
     }
     if(ymd(end_date) > '2020-12-30') {
       stop("End Date must be less than or equal to '20201230'")
