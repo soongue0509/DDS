@@ -5,7 +5,8 @@
 #' @import data.table
 #' @import tidyverse
 #' @import dplyr
-#' @import stringr
+#' @import tidyr
+#' @import ggplot2
 #' @import tibble
 #' @import lubridate
 #' @import xts
