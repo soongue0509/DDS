@@ -4,6 +4,8 @@
 #' @import ggrepel
 #' @import data.table
 #' @import tidyverse
+#' @import dplyr
+#' @import stringr
 #' @import tibble
 #' @import lubridate
 #' @import xts
