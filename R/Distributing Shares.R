@@ -4,7 +4,7 @@
 
 #' @export
 how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long", SN_ratio=0.3) {
-  
+  Sys.setlocale("LC_CTYPE", "ko_KR.UTF-8")
   if(length(unique(ssl$date)) != 1) {
     stop("There must be only one date in SSL.")
   }
