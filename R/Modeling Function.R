@@ -2,7 +2,7 @@
 # Return and Save Selected Stock List (SSL)
 
 #' @export
-modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', load_to_db = FALSE, dt=str_replace_all(Sys.Date(), '-', '')) {
+modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, l2_param = 100, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', load_to_db = FALSE, dt=str_replace_all(Sys.Date(), '-', '')) {
 
   pred_start_date = ymd(pred_start_date)
   if(!is.logical(load_to_db)) stop("load_to_db must be logical")
@@ -162,7 +162,8 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
           tree_learner = "voting",
           verbose = -1,
           seed = m,
-          objective = "binary"
+          objective = "binary",
+          lambda_l2 = l2_param
         )
 
       # Predict
