@@ -223,6 +223,31 @@ topN_prec_calc = function(ssl, df, target_y, topN) {
 }
 
 #' @export
+ta_filtering <- function(ssl, min_transaction_amount = 1e8) {
+  ta1w <- 
+    dbConnect(MySQL(),
+              user = 'betterlife',
+              password = 'snail132',
+              host = 'betterlife.duckdns.org',
+              port = 1231,
+              dbname = 'stock_db') %>% 
+    dbGetQuery(paste0("
+                      select date, stock_cd, transaction_amount_1w_mean 
+                      from stock_db.d_final_factor 
+                      where date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")"))
+  
+  ssl_filtered <- 
+    ssl %>% 
+    left_join(ta1w %>% prep_data(), by=c("date", "stock_cd")) %>% 
+    filter(transaction_amount_1w_mean >= min_transaction_amount) %>% 
+    select(-transaction_amount_1w_mean)
+  
+  lapply(dbListConnections(dbDriver(drv="MySQL")), dbDisconnect)
+  
+  return(ssl_filtered)
+}
+
+#' @export
 load_data = function(start_date = '20150101') {
   
   start_date <- str_replace_all(start_date, '-', '')
