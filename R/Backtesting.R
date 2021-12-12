@@ -4,7 +4,7 @@
 
 #' @export
 backtest_portfolio =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, FN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, FN_ratio, include_issue, upper_bound, lower_bound, min_transaction_amount, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_data = 'Y') {
 
     transaction_fee_rate = 0.00315
     start_date = str_replace_all(start_date, '-', '')
@@ -116,6 +116,7 @@ backtest_portfolio =
       # Pre-work =====
       ssl <-
         ssl_list[[l]] %>%
+        ta_filtering(min_transaction_amount[l]) %>%
         mutate(date = ymd(date)) %>%
         filter(date >= ymd(start_date) & date <= ymd(end_date)) %>%
         group_by(date) %>%
