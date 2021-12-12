@@ -245,11 +245,11 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     dbSendQuery(conn, "SET GLOBAL local_infile=1;")
     dbWriteTable(conn,
                  name = paste0("ssl_",dt, "_",title, "_", target_y,"_n", ensemble_n),
-                 value = ssl %>% select(date, stock_cd, pred_mean) %>% as.data.frame(),
+                 value = ssl %>% select(date, stock_cd, pred_mean, top_shap) %>% as.data.frame(),
                  row.names = FALSE,
                  overwrite = TRUE,
                  append = FALSE,
-                 field.types = c(date="varchar(10)", stock_cd="varchar(6)", pred_mean="double")
+                 field.types = c(date="varchar(10)", stock_cd="varchar(6)", pred_mean="double", top_shap="varchar(100)")
     )
     
     lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
