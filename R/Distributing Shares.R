@@ -3,12 +3,12 @@
 # How many shares
 
 #' @export
-how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long", SN_ratio=0.3) {
+how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long", SN_ratio=0.3, FN_ratio=0.3) {
   Sys.setlocale("LC_CTYPE", "ko_KR.UTF-8")
   if(length(unique(ssl$date)) != 1) {
     stop("There must be only one date in SSL.")
   }
-  
+
   stock_db_connection <- dbConnect(
     MySQL(),
     user = 'betterlife',
@@ -20,20 +20,23 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long
   dbSendQuery(stock_db_connection, "SET NAMES utf8;")
   dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
   dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
-  
+
   inv_date <- str_replace_all(unique(ssl$date),'-','')
   print(paste0("Inv Date: ", inv_date))
-  
+
   # Read Data
   sector_info = dbGetQuery(stock_db_connection, paste0("select * from stock_market_sector where date = '", inv_date,"';"))
   Encoding(sector_info$stock_nm) = 'UTF-8'; Encoding(sector_info$sector) = 'UTF-8'
-  
+
   d_stock_price_temp <-
     dbGetQuery(stock_db_connection, paste0("select * from stock_adj_price where date = '", inv_date,"';")) %>%
     select(stock_cd, date, price = adj_close_price)
-  
+
   ssl_temp =
     ssl %>%
+    group_by(top_shap) %>%
+    arrange(desc(get(pred_col)), .by_group=T) %>%
+    dplyr::slice(1:floor(topN*FN_ratio)) %>%
     left_join(sector_info %>% select(stock_cd, stock_nm, sector, market), by="stock_cd") %>%
     group_by(sector) %>%
     arrange(desc(get(pred_col)), .by_group=T) %>%
@@ -45,18 +48,18 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long
     mutate(each_stock_cap = seed_money / topN) %>%
     mutate(cnt_temp = floor(each_stock_cap / price)) %>%
     mutate(amt_temp = price * cnt_temp)
-  
+
   surplus = seed_money - sum(ssl_temp$amt_temp)
-  
+
   k=1
   while (unique(surplus) > min(ssl_temp$price)) {
-    
+
     if (k > topN) {
       k = 1
     } else {
       k = k
     }
-    
+
     if(surplus >= ssl_temp$price[k]) {
       ssl_temp$cnt_temp[k] = ssl_temp$cnt_temp[k] + 1
       surplus = surplus - ssl_temp$price[k]
@@ -65,17 +68,17 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long
       k = k + 1
     }
   }
-  
+
   final_result =
     ssl_temp %>%
     mutate(proportion = paste0(round((cnt_temp*price) / sum(cnt_temp*price) * 100, 2), '%'), amt=price*cnt_temp) %>%
     select(stock_cd, stock_nm, market, all_of(pred_col), cnt=cnt_temp, amt, proportion, last_close_price=price)
-  
+
   print("============================================================================")
   print(paste0("Surplus: ", surplus))
-  
+
   lapply(dbListConnections(dbDriver(drv = "MySQL")), dbDisconnect)
-  
+
   if (view_method == "long") {
     return(final_result)
   } else {
