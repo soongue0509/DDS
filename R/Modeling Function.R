@@ -3,33 +3,33 @@
 
 #' @export
 modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, l2_param = 100, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', explain_yn = 'N', load_to_db = FALSE, dt=str_replace_all(Sys.Date(), '-', '')) {
-
+  
   pred_start_date = ymd(pred_start_date)
   if(!is.logical(load_to_db)) stop("load_to_db must be logical")
-
+  
   shap.values <- function(xgb_model, X_train) {
-
+    
     shap_contrib <- predict(xgb_model,
                             (X_train),
                             predcontrib = TRUE)
-
+    
     # Add colnames if not already there (required for LightGBM)
     if (is.null(colnames(shap_contrib))) {
       colnames(shap_contrib) <- c(colnames(X_train), "BIAS")
     }
-
+    
     shap_contrib <- as.data.table(shap_contrib)
-
+    
     # For both XGBoost and LightGBM, the baseline value is kept in the last column
     BIAS0 <- shap_contrib[, ncol(shap_contrib), with = FALSE][1]
-
+    
     # Remove baseline and ensure the shap matrix has column names
     shap_contrib[, `:=`(BIAS, NULL)]
-
+    
     # Make SHAP score in decreasing order
     imp <- colMeans(abs(shap_contrib))
     mean_shap_score <- imp[order(imp, decreasing = T)]
-
+    
     return(list(shap_score = shap_contrib,
                 mean_shap_score = mean_shap_score,
                 BIAS0 = BIAS0))
@@ -39,7 +39,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     if (!is.null(shap_contrib)){
       if(paste0(dim(shap_contrib), collapse = " ") != paste0(dim(X_train), collapse = " ")) stop("supply correct shap_contrib, remove BIAS column.\n")
     }
-
+    
     # prep long-data
     shap <- if (is.null(shap_contrib)) shap.values(xgb_model, X_train) else list(
       shap_score = shap_contrib,
@@ -48,7 +48,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     std1 <- function(x){
       return ((x - min(x, na.rm = TRUE))/(max(x, na.rm = TRUE) - min(x, na.rm = TRUE)))
     }
-
+    
     # choose top n features
     if (is.null(top_n)) top_n <- dim(X_train)[2] # by default, use all features
     top_n <- as.integer(top_n)
@@ -56,7 +56,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
       message ('Please supply correct top_n, by default use all features.\n')
       top_n <- dim(X_train)[2]
     }
-
+    
     # arrange variables in descending order, thus the summary plot could be
     # plotted accordingly.
     shap_score_sub <- setDT(shap$shap_score)[, names(shap$mean_shap_score)[1:top_n], with = FALSE]
@@ -65,12 +65,12 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     # fv_sub: subset of feature values
     # since dayint is int, the package example will throw a warning here
     fv_sub <- as.data.table(X_train)[, names(shap$mean_shap_score)[1:top_n], with = F]
-
+    
     if(is.null(var_cat)){
       # shap_score_sub contains the sample ID
       shap_score_long <- melt.data.table(shap_score_sub, measure.vars = colnames(fv_sub))
       vars_wanted <- colnames(fv_sub)
-
+      
     } else if (var_cat%in%colnames(fv_sub)) {
       # exclude var_cat as it is used as a categorical group
       shap_score_long <- melt.data.table(shap_score_sub[,-..var_cat], measure.vars = colnames(fv_sub)[!colnames(fv_sub) %in% c(var_cat, "ID")])
@@ -96,12 +96,12 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     setkey(shap_long2, variable)
     return(shap_long2)
   }
-
-  selected_stock_cd_list = list()
+  
+  ssl <- data.frame()
   shap_train_df <- data.frame()
   shap_test_df <- data.frame()
   k = 1
-
+  
   # Set Data Span
   pre_bt <-
     df %>%
@@ -114,7 +114,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     rbind(pre_bt %>% filter(between(date, pre_bt_date[length(pre_bt_date)-train_span+1], pre_bt_date[length(pre_bt_date)])),
           post_bt)
   date_unique_bt <- unique(data_bt$date)
-
+  
   # Set Training Parameters
   lgbm_params <-
     list(
@@ -123,10 +123,10 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
       feature_fraction = feature_prop,
       bagging_freq = 1
     )
-
+  
   for (i in seq(1, by=push_span, to = length(date_unique_bt) - train_span)) {
     tic()
-
+    
     # Make Train & Validation Set
     dt_train <-
       data_bt %>%
@@ -135,23 +135,23 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     dt_test <-
       data_bt %>%
       filter(between(date, date_unique_bt[i+train_span], coalesce(date_unique_bt[i+train_span+push_span-1], max(date_unique_bt))))
-
+    
     if(nrow(dt_test) == 0) break
-
+    
     train_y <- dt_train[,target_y]
-
+    
     lgbm_train_dat <-
       lgb.Dataset(
         data.matrix(dt_train %>% select(-c(`stock_cd`,`date`, contains('target')))),
         label = dt_train[,target_y]
       )
     lgbm_test_dat <- data.matrix(dt_test %>% select(-c(`stock_cd`,`date`, contains('target'))))
-
+    
     # Start Training
     pred_mat <- matrix(nrow=nrow(dt_test), ncol=ensemble_n)
-
+    
     for (m in 1:ensemble_n) {
-
+      
       lgbm_model <-
         lightgbm(
           params = lgbm_params,
@@ -165,13 +165,13 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
           objective = "binary",
           lambda_l2 = l2_param
         )
-
+      
       # Predict
       lgbm_pred <- predict(lgbm_model, lgbm_test_dat)
       pred_mat[,m] <- lgbm_pred
-
+      
     }
-
+    
     colnames(pred_mat) <- paste0('pred', seq(1:ensemble_n))
     pred_mean <- apply(pred_mat, 1, mean)
     pred_df <-
@@ -179,21 +179,12 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
       group_by(date) %>%
       arrange(desc(pred_mean), .by_group=T) %>%
       ungroup()
-
+    
     if(explain_yn == 'Y'){
-
+      
       # SHAP
-      shap_train <- shap.prep(xgb_model = lgbm_model, X_train = data.matrix(dt_train %>% sample_n(100) %>% select(-c(`stock_cd`,`date`, contains('target')))))
       shap_test <- shap.prep(xgb_model = lgbm_model, X_train = data.matrix(dt_test %>% select(-c(`stock_cd`,`date`, contains('target')))))
-
-      shap_train_df <-
-        rbind(
-          shap_train_df,
-          shap_train %>%
-            mutate(date = unique(dt_test$date)) %>%
-            select(date, variable, value, rfvalue, stdfvalue, mean_value)
-        )
-
+      
       shap_test_df <-
         rbind(
           shap_test_df,
@@ -204,27 +195,42 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
             ) %>%
             select(date, stock_cd, variable, value, rfvalue, stdfvalue, mean_value)
         )
-
     }
-
-    # saving on 'selected_stock_cd_list'
-    selected_stock_cd_list[[k]] <- pred_df
-
+    
+    ssl <- rbind(ssl, pred_df)
+    
     k = k+1
-
+    
     print(pred_df$date %>% unique())
     toc()
   }
-  ssl <- data.frame()
-  for (i in 1:length(selected_stock_cd_list)) {
-    ssl <- rbind(ssl, selected_stock_cd_list[[i]])
-  }
-  ssl %<>% left_join(df %>% select(date, stock_cd, target_1m_return), by = c('date', 'stock_cd'))
+
+  feature_list <- 
+    dbConnect(
+      MySQL(),
+      user = 'betterlife',
+      password = 'snail132',
+      host = 'betterlife.duckdns.org',
+      port = 1231 ,
+      dbname = 'stock_db') %>% dbGetQuery("select * from feature_list")
+  lapply(dbListConnections(dbDriver(drv="MySQL")), dbDisconnect)
+  
+  ssl %<>% 
+    left_join(shap_test_df %>% 
+                filter(variable %in% (feature_list %>% filter(category != 'Macro' & category != 'Target') %>% pull(feature))) %>% 
+                group_by(date, stock_cd) %>% 
+                arrange(desc(value), .by_group=T) %>% 
+                dplyr::slice(1) %>% 
+                select(date, stock_cd, top_shap = variable),
+              by = c('date', 'stock_cd')) %>% 
+    left_join(df %>% select(date, stock_cd, target_1m_return), 
+              by = c('date', 'stock_cd'))
   saveRDS(ssl, paste0("ssl_",dt, "_",title, "_", target_y," (n", ensemble_n, ").RDS"))
+  
   if(explain_yn == 'Y'){
-    saveRDS(shap_train_df, paste0("trainSHAP_",dt, "_",title, "_", target_y, ".RDS"))
     saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",dt, "_",title, "_", target_y, ".RDS"))
   }
+  
   if(load_to_db){
     conn <- dbConnect(
       MySQL(),
@@ -244,8 +250,8 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
                  overwrite = TRUE,
                  append = FALSE,
                  field.types = c(date="varchar(10)", stock_cd="varchar(6)", pred_mean="double")
-                 )
-
+    )
+    
     lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
   }
   return(ssl)
