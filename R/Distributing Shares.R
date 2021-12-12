@@ -3,7 +3,7 @@
 # How many shares
 
 #' @export
-how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long", SN_ratio=0.3, FN_ratio=0.3) {
+how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long", SN_ratio=0.3, FN_ratio=0.3, min_transaction_amount=1e8) {
   Sys.setlocale("LC_CTYPE", "ko_KR.UTF-8")
   if(length(unique(ssl$date)) != 1) {
     stop("There must be only one date in SSL.")
@@ -34,6 +34,7 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, view_method="long
 
   ssl_temp =
     ssl %>%
+    ta_filtering(min_transaction_amount) %>%
     group_by(top_shap) %>%
     arrange(desc(get(pred_col)), .by_group=T) %>%
     dplyr::slice(1:floor(topN*FN_ratio)) %>%
