@@ -54,46 +54,36 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
     left_join(macro_df, by = "date") %>% 
     left_join(target_df, by = c("date", "stock_cd"))
   rm(factor_df); rm(target_df); rm(macro_df)
-  
-  # 1. 거래대금 N억 제거 ===
+
+  # 1. 재무 NA 비율 30% 이상 제거 === 
   step1 <-
     step0 %>% 
-    filter(transaction_amount_1w_mean >= min_tr_amount)
-  
-  # 2. PBR&PSR 음수 제거 ===
-  step2 <-
-    step1 %>% 
-    filter(pbr >= 0 & psr >= 0)
-  
-  # 3. 재무 NA 비율 30% 이상 제거 === 
-  step3 <-
-    step2 %>% 
-    mutate(fs_na_ratio = step2 %>% select(ends_with("ttm")) %>% select(-contains("leverage")) %>% is.na() %>% rowMeans()) %>% 
+    mutate(fs_na_ratio = step0 %>% select(ends_with("ttm")) %>% select(-contains("leverage")) %>% is.na() %>% rowMeans()) %>% 
     filter(fs_na_ratio < 0.3) %>% 
     select(-fs_na_ratio)
   
-  # 4. 금융주 제거 ===
+  # 2. 금융주 제거 ===
   fin_stock_cd <- 
     dbGetQuery(conn, paste0("select date, stock_cd, stock_nm from stock_db.stock_market_sector where date in (", paste0(dates_needed, collapse=','),") and stock_nm rlike '(은행|카드|증권|보험|코리안리|미래에셋대우|자산관리|금융|글로벌텍스프리|창투|인베스트|모기지|CNH|우리파이낸셜|캐피탈|화재|해상|신한지주|신한알파리츠|삼성생명|동양생명|한화생명|미래에셋생명|아이엔지생명|투자|종금|스팩|에이플러스에셋|[0-9]호|한국토지신탁)'"))
-  step4 <-
-    step3 %>% 
+  step2 <-
+    step1 %>% 
     left_join(fin_stock_cd, by=c("date", "stock_cd")) %>% 
     filter(is.na(stock_nm)) %>% 
     select(-stock_nm)
   rm(fin_stock_cd)
   
-  # 5. 상장 후 N년 ===
+  # 3. 상장 후 N년 ===
   days_listed <- dbGetQuery(conn, paste0("select date, stock_cd, date_from_ipo from stock_db.stock_derived_var where date in (", paste0(dates_needed, collapse=','),")"))
-  step5 <-
-    step4 %>% 
+  step3 <-
+    step2 %>% 
     left_join(days_listed, by=c("date", "stock_cd")) %>% 
     filter(date_from_ipo/365 >= min_years_listed) %>% 
     select(-date_from_ipo)
   rm(days_listed)
   
-  # 6. Rank-Normalize ===
-  step6 <-
-    step5 %>% 
+  # 4. Rank-Normalize ===
+  step4 <-
+    step3 %>% 
     group_by(date) %>%
     mutate_at(vars(ends_with("ttm")), function(x){rank_norm(x)}) %>%
     mutate_at(c('o_cfr', 'o_per', 'pbr', 'per', 'psr'), function(x){rank_norm(x)}) %>%
@@ -103,7 +93,7 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
   
   # Prep Data ===
   result = 
-    step6 %>% 
+    step4 %>% 
     arrange(date, stock_cd) %>% 
     mutate(date = ymd(date)) %>%
     as.data.frame()
