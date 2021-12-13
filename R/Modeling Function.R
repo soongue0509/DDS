@@ -115,15 +115,6 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
           post_bt)
   date_unique_bt <- unique(data_bt$date)
 
-  # Set Training Parameters
-  lgbm_params <-
-    list(
-      learning_rate = 0.1,
-      bagging_fraction = bagging_prop,
-      feature_fraction = feature_prop,
-      bagging_freq = 1
-    )
-
   for (i in seq(1, by=push_span, to = length(date_unique_bt) - train_span)) {
     tic()
 
@@ -152,18 +143,27 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
 
     for (m in 1:ensemble_n) {
 
+      # Set Training Parameters
+      lgbm_params <-
+        list(
+          learning_rate = 0.1,
+          bagging_freq = 1,
+          boosting = "gbdt",
+          tree_learner = "voting",
+          objective = "binary",
+          bagging_fraction = bagging_prop,
+          feature_fraction = feature_prop,
+          num_threads = num_threads_params,
+          seed = m,
+          lambda_l2 = l2_param
+        )
+
       lgbm_model <-
         lightgbm(
           params = lgbm_params,
           data = lgbm_train_dat,
-          boosting = "gbdt",
           nrounds = num_rounds,
-          num_threads = num_threads_params,
-          tree_learner = "voting",
-          verbose = -1,
-          seed = m,
-          objective = "binary",
-          lambda_l2 = l2_param
+          verbose = -1
         )
 
       # Predict
