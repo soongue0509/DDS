@@ -28,5 +28,5 @@
 #' @importFrom parallel 'makeCluster' 'stopCluster'
 #' @importFrom doParallel 'registerDoParallel'
 #' @importFrom RMySQL 'MySQL'
-#' @importFrom DBI 'dbGetQuery' 'dbConnect' 'dbSendQuery' 'dbDisconnect'
+#' @importFrom DBI 'dbGetQuery' 'dbConnect' 'dbSendQuery' 'dbDisconnect' 'dbListConnections'
 NULL
