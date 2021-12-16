@@ -64,7 +64,8 @@ sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
   
   # Sector
   sector_info <- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
-
+  Encoding(sector_info$stock_nm) = 'UTF-8'; Encoding(sector_info$sector) = 'UTF-8'
+  
   # Sector Neutral =====
   max_stock_per_sector = floor(topN*SN_ratio)
   # Create Sector Neutral SSL
