@@ -63,7 +63,7 @@ sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
   dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
   
   # Sector
-  sector_info <- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
+  sector_info <- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector where date >= 20150102 group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
   Encoding(sector_info$stock_nm) = 'UTF-8'; Encoding(sector_info$sector) = 'UTF-8'
   
   # Sector Neutral =====
@@ -71,14 +71,14 @@ sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
   # Create Sector Neutral SSL
   ssl_sn <-
     ssl %>%
-    left_join(sector_info %>% select(stock_cd, sector), by="stock_cd") %>%
+    left_join(sector_info %>% select(stock_cd, stock_nm, market, sector), by="stock_cd") %>%
     group_by(date, sector) %>%
     arrange(desc(get(pred_col)), .by_group =T) %>%
     dplyr::slice(1:max_stock_per_sector) %>%
     group_by(date) %>%
     arrange(desc(get(pred_col)), .by_group =T) %>%
     ungroup()
-    
+  
   # Disconnect MySQL Server
   lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
   
