@@ -174,8 +174,6 @@ load_data = function(start_date = '20150101') {
   d_stock_price <<- dbGetQuery(conn, paste0("select * from stock_adj_price where date >= '", start_date ,"';"))
   # KOSPI & KOSDAQ
   d_kospi_kosdaq <<- dbGetQuery(conn, paste0("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '", start_date, "';"))
-  # Sector
-  sector_info <<- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
   # Gwanli Stocks
   issue_df <<- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
   # Safe Haven
