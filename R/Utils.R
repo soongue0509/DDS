@@ -48,6 +48,141 @@ ssl_bind <- function(ssl1, ssl2, topN) {
 }
 
 #' @export
+sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
+  library(RMySQL)
+  conn <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231,
+    dbname = 'stock_db'
+  )
+  dbSendQuery(conn, "SET NAMES utf8;")
+  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+  
+  # Sector
+  sector_info <- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
+
+  # Sector Neutral =====
+  max_stock_per_sector = floor(topN*SN_ratio)
+  # Create Sector Neutral SSL
+  ssl_sn <-
+    ssl %>%
+    left_join(sector_info %>% select(stock_cd, sector), by="stock_cd") %>%
+    group_by(date, sector) %>%
+    arrange(desc(get(pred_col)), .by_group =T) %>%
+    dplyr::slice(1:max_stock_per_sector) %>%
+    ungroup()
+    
+  # Disconnect MySQL Server
+  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+  
+  return(ssl_sn)
+}
+
+#' @export
+ta_filtering <- function(ssl, min_transaction_amount = 1e8) {
+  ta1w <- 
+    dbConnect(MySQL(),
+              user = 'betterlife',
+              password = 'snail132',
+              host = 'betterlife.duckdns.org',
+              port = 1231,
+              dbname = 'stock_db') %>% 
+    dbGetQuery(paste0("
+                      select date, stock_cd, transaction_amount_1w_mean 
+                      from stock_db.d_final_factor 
+                      where date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")"))
+  
+  ssl_filtered <- 
+    ssl %>% 
+    left_join(ta1w %>% prep_data(), by=c("date", "stock_cd")) %>% 
+    filter(transaction_amount_1w_mean >= min_transaction_amount) %>% 
+    select(-transaction_amount_1w_mean)
+  
+  lapply(dbListConnections(dbDriver(drv="MySQL")), dbDisconnect)
+  
+  return(ssl_filtered)
+}
+
+#' @export
+auc_calc = function(ssl, df, target_y) {
+  auc_df =
+    ssl %>% 
+    select(date, stock_cd, pred_mean) %>% 
+    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
+    mutate(response = get(target_y)) %>% 
+    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
+    group_by(date) %>% 
+    summarize(AUC = Metrics::auc(response, pred_mean))
+  print(paste0("Average AUC : ", round(mean(auc_df$AUC, na.rm=T), 4)))
+  auc_plot =
+    ggplot(auc_df %>% filter(!is.na(AUC)), aes(x=date, y=AUC)) +
+    geom_line() +
+    theme_minimal() +
+    ggtitle("AUC")
+  print(auc_plot)
+  return(auc_df)
+}
+
+#' @export
+topN_prec_calc = function(ssl, df, target_y, topN) {
+  prec_df =
+    ssl %>% 
+    select(date, stock_cd, pred_mean) %>% 
+    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
+    mutate(response = get(target_y)) %>% 
+    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
+    group_by(date) %>% 
+    arrange(desc(pred_mean), .by_group=T) %>% 
+    dplyr::slice(1:topN) %>% 
+    summarize(Precision = sum(response)/topN)
+  print(paste0("Average Top", topN, " Precision : ", round(mean(prec_df$Precision, na.rm=T), 4)))
+  prec_plot =
+    ggplot(prec_df %>% filter(!is.na(Precision)), aes(x=date, y=Precision)) +
+    geom_line() +
+    theme_minimal() +
+    ggtitle(paste0("Top", topN, " Precision"))
+  print(prec_plot)
+  return(prec_df)
+}
+
+#' @export
+load_data = function(start_date = '20150101') {
+  
+  start_date <- str_replace_all(start_date, '-', '')
+  
+  library(RMySQL)
+  conn <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231,
+    dbname = 'stock_db'
+  )
+  dbSendQuery(conn, "SET NAMES utf8;")
+  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+  
+  # Stock Price
+  d_stock_price <<- dbGetQuery(conn, paste0("select * from stock_adj_price where date >= '", start_date ,"';"))
+  # KOSPI & KOSDAQ
+  d_kospi_kosdaq <<- dbGetQuery(conn, paste0("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '", start_date, "';"))
+  # Sector
+  sector_info <<- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
+  # Gwanli Stocks
+  issue_df <<- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
+  # Safe Haven
+  safe_haven_price <<- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
+  
+  # Disconnect MySQL Server
+  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+}
+
+#' @export
 upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_tries, load_data = 'Y') {
   
   if (num_tries <= 0) {
@@ -178,106 +313,6 @@ upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_
     summarize(hit_ratio = mean(hit_ratio))
   
   print(paste0("[Hit Ratio] upper : ", max_hit_ratio_df$first_upper_bound, " / lower : ", max_hit_ratio_df$second_upper_bound, " / hit ratio : ", round(max_hit_ratio_df$hit_ratio, 4)))
-}
-
-#' @export
-auc_calc = function(ssl, df, target_y) {
-  auc_df =
-    ssl %>% 
-    select(date, stock_cd, pred_mean) %>% 
-    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
-    mutate(response = get(target_y)) %>% 
-    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
-    group_by(date) %>% 
-    summarize(AUC = Metrics::auc(response, pred_mean))
-  print(paste0("Average AUC : ", round(mean(auc_df$AUC, na.rm=T), 4)))
-  auc_plot =
-    ggplot(auc_df %>% filter(!is.na(AUC)), aes(x=date, y=AUC)) +
-    geom_line() +
-    theme_minimal() +
-    ggtitle("AUC")
-  print(auc_plot)
-  return(auc_df)
-}
-
-#' @export
-topN_prec_calc = function(ssl, df, target_y, topN) {
-  prec_df =
-    ssl %>% 
-    select(date, stock_cd, pred_mean) %>% 
-    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
-    mutate(response = get(target_y)) %>% 
-    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
-    group_by(date) %>% 
-    arrange(desc(pred_mean), .by_group=T) %>% 
-    dplyr::slice(1:topN) %>% 
-    summarize(Precision = sum(response)/topN)
-  print(paste0("Average Top", topN, " Precision : ", round(mean(prec_df$Precision, na.rm=T), 4)))
-  prec_plot =
-    ggplot(prec_df %>% filter(!is.na(Precision)), aes(x=date, y=Precision)) +
-    geom_line() +
-    theme_minimal() +
-    ggtitle(paste0("Top", topN, " Precision"))
-  print(prec_plot)
-  return(prec_df)
-}
-
-#' @export
-ta_filtering <- function(ssl, min_transaction_amount = 1e8) {
-  ta1w <- 
-    dbConnect(MySQL(),
-              user = 'betterlife',
-              password = 'snail132',
-              host = 'betterlife.duckdns.org',
-              port = 1231,
-              dbname = 'stock_db') %>% 
-    dbGetQuery(paste0("
-                      select date, stock_cd, transaction_amount_1w_mean 
-                      from stock_db.d_final_factor 
-                      where date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")"))
-  
-  ssl_filtered <- 
-    ssl %>% 
-    left_join(ta1w %>% prep_data(), by=c("date", "stock_cd")) %>% 
-    filter(transaction_amount_1w_mean >= min_transaction_amount) %>% 
-    select(-transaction_amount_1w_mean)
-  
-  lapply(dbListConnections(dbDriver(drv="MySQL")), dbDisconnect)
-  
-  return(ssl_filtered)
-}
-
-#' @export
-load_data = function(start_date = '20150101') {
-  
-  start_date <- str_replace_all(start_date, '-', '')
-  
-  library(RMySQL)
-  conn <- dbConnect(
-    MySQL(),
-    user = 'betterlife',
-    password = 'snail132',
-    host = 'betterlife.duckdns.org',
-    port = 1231,
-    dbname = 'stock_db'
-  )
-  dbSendQuery(conn, "SET NAMES utf8;")
-  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
-  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
-  
-  # Stock Price
-  d_stock_price <<- dbGetQuery(conn, paste0("select * from stock_adj_price where date >= '", start_date ,"';"))
-  # KOSPI & KOSDAQ
-  d_kospi_kosdaq <<- dbGetQuery(conn, paste0("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '", start_date, "';"))
-  # Sector
-  sector_info <<- dbGetQuery(conn, "select b.* from (select stock_cd, max(date) as date from stock_market_sector group by stock_cd) as a left join stock_market_sector as b on a.stock_cd = b.stock_cd and a.date = b.date;")
-  # Gwanli Stocks
-  issue_df <<- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
-  # Safe Haven
-  safe_haven_price <<- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
-  
-  # Disconnect MySQL Server
-  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
 }
 
 #' @export
