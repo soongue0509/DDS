@@ -5,10 +5,10 @@
 #' @export
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, min_transaction_amount, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_data = 'Y') {
-
+    
     transaction_fee_rate = 0.00315
     start_date = str_replace_all(start_date, '-', '')
-
+    
     # Check Arugments =====
     if(length(topN) != length(ssl_list)) {
       stop("topN length must be equal to ssl_list length")
@@ -50,7 +50,7 @@ backtest_portfolio =
     if(length(include_issue) != length(ssl_list)) {
       stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
     }
-
+    
     # Load Data if Needed =====
     if(load_data == 'Y') {
       library(RMySQL)
@@ -65,7 +65,7 @@ backtest_portfolio =
       dbSendQuery(conn, "SET NAMES utf8;")
       dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
       dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
-
+      
       # Stock Price
       d_stock_price <- dbGetQuery(conn, paste0("select * from stock_adj_price where date >= '", start_date ,"';"))
       # KOSPI & KOSDAQ
@@ -76,13 +76,13 @@ backtest_portfolio =
       issue_df <- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
       # Safe Haven
       safe_haven_price <- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
-
+      
       # Disconnect MySQL Server
       lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
     }
-
+    
     tic()
-
+    
     # Prepare Data =====
     d_stock_price %<>%
       mutate(date=ymd(date),
@@ -109,7 +109,7 @@ backtest_portfolio =
     safe_haven_price %<>%
       select(date, price=adj_close_price) %>%
       mutate(date = ymd(date))
-
+    
     # Start Simulation =====
     rets_total <- data.frame()
     for (l in 1:length(ssl_list)) {
@@ -124,37 +124,33 @@ backtest_portfolio =
         arrange(desc(get(pred_col[l])), .by_group = TRUE) %>%
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
-
+      
       if (ymd(end_date) == max(ssl$date) | max(d_stock_price$date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
-
+      
       # Remove Gwanli Stocks =====
       if(include_issue[l] == 'N') {
         ssl <- ssl %>% left_join(issue_df %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(issue)) %>% select(-issue)
       }
-
+      
       # Sector Neutral =====
-      max_stock_per_sector = floor(topN[l]*SN_ratio[l])
-      # Create Sector Neutral SSL
-      ssl_sn <-
-        ssl %>%
-        left_join(sector_info %>% select(stock_cd, sector), by="stock_cd") %>%
-        group_by(date, sector) %>%
-        arrange(desc(get(pred_col[l])), .by_group =T) %>%
-        dplyr::slice(1:max_stock_per_sector) %>%
-        ungroup()
-
+      ssl_sn <- 
+        sector_neutral(ssl = ssl,
+                       SN_ratio = SN_ratio[l],
+                       topN = topN[l],
+                       pred_col = pred_col[l])
+      
       rebalancing_dates <- unique(ssl$date)
-
+      
       rets_cum <- data.frame()
       market_win_vec <- c()
       risk_ratio_vec <- c()
-
+      
       # Work =====
       for(k in rebalancing_dates) {
         i = as.Date(k, origin = '1970-01-01')
-
+        
         # Calculate Each Stock Return =====
-
+        
         # Get Stock Price of Selected Stocks
         rets_temp <-
           d_stock_price %>%
@@ -188,7 +184,7 @@ backtest_portfolio =
         rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
         ssc = ncol(rets_temp)-1
         names(rets_temp)[-1] <- paste0("stock", c(1 : ssc))
-
+        
         # Calculate Daily Return with Tax
         rets_base <- rets_temp
         for (s in 1:ssc) {
@@ -197,20 +193,20 @@ backtest_portfolio =
           rets_base %<>% mutate(return_temp = ( (get(paste0('stock',s)) * (1-transaction_fee_rate)) -get(paste0('base',s)) ) / get(paste0('base',s)))
           colnames(rets_base)[ncol(rets_base)] <- paste0("return", s)
         }
-
+        
         rets_cum_temp <- rets_base %>% select(date, contains('return'))
-
+        
         # Calculate Portfolio Return =====
-
+        
         portfolio.returns <- c()
-
+        
         if (sum(is.na(weight_list[l][[1]])) == 1) {
           portfolio.returns <- rets_cum_temp %>% mutate(pr = rowMeans(rets_cum_temp %>% select(-date))) %>% pull(pr) %>% unname()
         } else {
           if(sum(is.na(weight_list[[l]])) > 0) stop("If weight_list is used, it cannot contain NA.")
           portfolio.returns <- rets_cum_temp %>% mutate(pr = rowWeightedMeans(rets_cum_temp %>% select(-date) %>% as.matrix(), w=as.numeric(wm %>% filter(dates == i) %>% select(-dates)))) %>% pull(pr) %>% unname()
         }
-
+        
         # Get Safe Haven Return =====
         if (sum(is.na(safe_haven[l][[1]])) == 1) {
           invisible()
@@ -222,13 +218,13 @@ backtest_portfolio =
                    safe_haven_cumret = cumprod(safe_haven_return+1)-1) %>%
             select(date, safe_haven_cumret) %>%
             pull(safe_haven_cumret)
-
+          
           if(sum(is.na(safe_haven[[l]])) > 0) stop("If safe_haven is used, it cannot contain NA.")
           safe_haven_weight = safe_haven[[l]] %>% filter(date == i) %>% pull(w)
-
+          
           portfolio.returns <- portfolio.returns*(1-safe_haven_weight) + safe_haven.returns*safe_haven_weight
         }
-
+        
         # Save Cumulative Return =====
         if (nrow(rets_cum) == 0) {
           rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date, return = portfolio.returns))
@@ -236,10 +232,10 @@ backtest_portfolio =
           rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date[-1],
                                                  return=((1+portfolio.returns[-1])*(1+rets_cum$return[nrow(rets_cum)])-1)))
         }
-
+        
         # Extra Metrics =====
         # Monthly Win Ratio
-
+        
         market_win_yn <-
           d_kospi_kosdaq_cum %>%
           filter(date %in% rets_cum_temp$date) %>%
@@ -248,13 +244,13 @@ backtest_portfolio =
           mutate(kospi_cumret = cumprod(1+kospi)-1, kosdaq_cumret = cumprod(1+kosdaq)-1) %>%
           mutate(market_cumret = (kospi_cumret+kosdaq_cumret)/2) %$%
           market_cumret[nrow(.)] < portfolio.returns[length(portfolio.returns)]
-
+        
         market_win_vec <- c(market_win_vec, market_win_yn)
-
+        
         # Risk Ratio
         risk_ratio_vec <- c(risk_ratio_vec, portfolio.returns[length(portfolio.returns)])
       }
-
+      
       # Post-work =====
       model_nm_temp =
         paste0(
@@ -271,16 +267,16 @@ backtest_portfolio =
           "SR: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec) * sqrt(rebalancing_dates %>% substr(1, 4) %>% table() %>% median()), 2), ", ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
-
+      
       rets_total <- rbind(rets_total, rets_cum %>% mutate(model_nm = model_nm_temp))
       print(model_nm_temp)
     }
-
+    
     # Prepare Plot =====
     rets_total <- rbind(rets_total,
                         d_kospi_kosdaq_cum %>% select(date, return=kospi_cumret) %>% mutate(model_nm = "KOSPI") %>% filter(date <= max(rets_total$date)),
                         d_kospi_kosdaq_cum %>% select(date, return=kosdaq_cumret) %>% mutate(model_nm = "KOSDAQ") %>% filter(date <= max(rets_total$date)))
-
+    
     toc()
     options(ggrepel.max.overlaps = Inf)
     rets_total %>% mutate(label = if_else(date == max(date), as.character(round(return,2)), NA_character_)) %>%
@@ -462,15 +458,11 @@ backtest_portfolio_tic =
       }
 
       # Sector Neutral =====
-      max_stock_per_sector = floor(topN[l]*SN_ratio[l])
-      # Create Sector Neutral SSL
-      ssl_sn <-
-        ssl %>%
-        left_join(sector_info %>% select(stock_cd, sector), by="stock_cd") %>%
-        group_by(date, sector) %>%
-        arrange(desc(get(pred_col[l])), .by_group =T) %>%
-        dplyr::slice(1:max_stock_per_sector) %>%
-        ungroup()
+      ssl_sn <- 
+        sector_neutral(ssl = ssl,
+                       SN_ratio = SN_ratio[l],
+                       topN = topN[l],
+                       pred_col = pred_col[l])
 
       rebalancing_dates <- unique(ssl$date)
 
