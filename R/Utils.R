@@ -75,6 +75,9 @@ sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
     group_by(date, sector) %>%
     arrange(desc(get(pred_col)), .by_group =T) %>%
     dplyr::slice(1:max_stock_per_sector) %>%
+    ungroup() %>%
+    group_by(date) %>%
+    arrange(desc(get(pred_col)), .by_group =T) %>%
     ungroup()
     
   # Disconnect MySQL Server
