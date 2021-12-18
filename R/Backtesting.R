@@ -304,7 +304,7 @@ backtest_portfolio =
 
 #' @export
 backtest_portfolio_tic =
-  function(test_title="Portfolio Return", ssl_list, topN, pred_col, SN_ratio, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20180101', end_date = '20201230', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, pred_col, topN, SN_ratio, min_transaction_amount, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170102', end_date = '20201230', load_data = 'Y') {
 
     transaction_fee_rate = 0.00315
     start_date = str_replace_all(start_date, '-', '')
@@ -329,8 +329,8 @@ backtest_portfolio_tic =
     }
 
     # Check Arugments =====
-    if(ymd(start_date) < '2017-01-04') {
-      stop("Start Date must be greater than or equal to '20170104'")
+    if(ymd(start_date) < '2017-01-02') {
+      stop("Start Date must be greater than or equal to '20170102'")
     }
     if(ymd(end_date) > '2020-12-30') {
       stop("End Date must be less than or equal to '20201230'")
@@ -438,6 +438,7 @@ backtest_portfolio_tic =
       # Pre-work =====
       ssl <-
         ssl_list[[l]] %>%
+        ta_filtering(min_transaction_amount[l]) %>%
         mutate(date = ymd(date)) %>%
         filter(date >= ymd(start_date) & date <= ymd(end_date)) %>%
         group_by(date) %>%
@@ -446,7 +447,7 @@ backtest_portfolio_tic =
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
 
-      if (ymd(end_date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
+      if (ymd(end_date) == max(ssl$date) | max(d_stock_price$date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
 
       # Remove Gwanli Stocks =====
       if(include_issue[l] == 'N') {
@@ -454,12 +455,12 @@ backtest_portfolio_tic =
       }
 
       # Sector Neutral =====
-      ssl_sn <- 
+      ssl_sn <-
         sector_neutral(ssl = ssl,
                        SN_ratio = SN_ratio[l],
                        topN = topN[l],
                        pred_col = pred_col[l])
-      
+
       # Create Objects =====
       rebalancing_dates <- unique(ssl$date)
 
@@ -552,7 +553,6 @@ backtest_portfolio_tic =
           spread(key = "stock_cd",
                  value = "price") %>%
           select_if(~ !any(is.na(.)))
-
         rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
         ssc = ncol(rets_temp)-1
         names(rets_temp)[-1] <- paste0("stock", c(1 : ssc))
@@ -651,6 +651,7 @@ backtest_portfolio_tic =
 
     toc()
 
+    options(ggrepel.max.overlaps = Inf)
     rets_total %>% mutate(label = if_else(date == max(date), as.character(round(return,2)), NA_character_)) %>%
       ggplot(aes(x=ymd(date), y=return, col=model_nm)) +
       geom_line(size=1.1) +
