@@ -98,19 +98,18 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
   }
   
   ssl <- data.frame()
-  shap_train_df <- data.frame()
   shap_test_df <- data.frame()
   
   # Set Data Span
   pre_bt <-
     df %>%
-    dplyr::filter(date < pred_start_date)
+    filter(date < pred_start_date)
   post_bt <-
     df %>%
-    dplyr::filter(date >= pred_start_date)
+    filter(date >= pred_start_date)
   pre_bt_date <- unique(pre_bt$date)
   data_bt <-
-    rbind(pre_bt %>% dplyr::filter(between(date, pre_bt_date[length(pre_bt_date)-train_span+1], pre_bt_date[length(pre_bt_date)])),
+    rbind(pre_bt %>% filter(between(date, pre_bt_date[length(pre_bt_date)-train_span+1], pre_bt_date[length(pre_bt_date)])),
           post_bt)
   date_unique_bt <- unique(data_bt$date)
   
@@ -120,11 +119,11 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     # Make Train & Validation Set
     dt_train <-
       data_bt %>%
-      # dplyr::filter(date <= date_unique_bt[i+train_span-1]) # 롤링 오리진
-      dplyr::filter(between(date, date_unique_bt[i], date_unique_bt[i+train_span-1]))
+      # filter(date <= date_unique_bt[i+train_span-1]) # 롤링 오리진
+      filter(between(date, date_unique_bt[i], date_unique_bt[i+train_span-1]))
     dt_test <-
       data_bt %>%
-      dplyr::filter(between(date, date_unique_bt[i+train_span], coalesce(date_unique_bt[i+train_span+push_span-1], max(date_unique_bt))))
+      filter(between(date, date_unique_bt[i+train_span], coalesce(date_unique_bt[i+train_span+push_span-1], max(date_unique_bt))))
     
     if(nrow(dt_test) == 0) break
     
