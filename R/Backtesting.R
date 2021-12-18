@@ -276,6 +276,7 @@ backtest_portfolio =
                         d_kospi_kosdaq_cum %>% select(date, return=kosdaq_cumret) %>% mutate(model_nm = "KOSDAQ") %>% filter(date <= max(rets_total$date)))
     
     toc()
+    
     options(ggrepel.max.overlaps = Inf)
     rets_total %>% mutate(label = if_else(date == max(date), as.character(round(return,2)), NA_character_)) %>%
       ggplot(aes(x=ymd(date), y=return, col=model_nm)) +
