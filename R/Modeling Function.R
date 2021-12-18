@@ -2,7 +2,7 @@
 # Return and Save Selected Stock List (SSL)
 
 #' @export
-modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, l2_param = 100, bagging_prop=0.8, feature_prop=0.8, num_rounds=60, pred_start_date = '2015-01-01', load_to_db = FALSE, dt=str_replace_all(Sys.Date(), '-', '')) {
+modeling_func = function(df, target_y, title = "", num_threads_params=12, train_span=36, push_span=1, ensemble_n = 300, l2_param = 100, bagging_prop=0.8, feature_prop=0.8, pred_start_date = '2015-01-01', load_to_db = FALSE, dt=str_replace_all(Sys.Date(), '-', '')) {
   
   pred_start_date = ymd(pred_start_date)
   if(!is.logical(load_to_db)) stop("load_to_db must be logical")
@@ -100,18 +100,17 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
   ssl <- data.frame()
   shap_train_df <- data.frame()
   shap_test_df <- data.frame()
-  k = 1
   
   # Set Data Span
   pre_bt <-
     df %>%
-    filter(date < pred_start_date)
+    dplyr::filter(date < pred_start_date)
   post_bt <-
     df %>%
-    filter(date >= pred_start_date)
+    dplyr::filter(date >= pred_start_date)
   pre_bt_date <- unique(pre_bt$date)
   data_bt <-
-    rbind(pre_bt %>% filter(between(date, pre_bt_date[length(pre_bt_date)-train_span+1], pre_bt_date[length(pre_bt_date)])),
+    rbind(pre_bt %>% dplyr::filter(between(date, pre_bt_date[length(pre_bt_date)-train_span+1], pre_bt_date[length(pre_bt_date)])),
           post_bt)
   date_unique_bt <- unique(data_bt$date)
   
@@ -121,11 +120,11 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     # Make Train & Validation Set
     dt_train <-
       data_bt %>%
-      # filter(date <= date_unique_bt[i+train_span-1]) # 롤링 오리진
-      filter(between(date, date_unique_bt[i], date_unique_bt[i+train_span-1]))
+      # dplyr::filter(date <= date_unique_bt[i+train_span-1]) # 롤링 오리진
+      dplyr::filter(between(date, date_unique_bt[i], date_unique_bt[i+train_span-1]))
     dt_test <-
       data_bt %>%
-      filter(between(date, date_unique_bt[i+train_span], coalesce(date_unique_bt[i+train_span+push_span-1], max(date_unique_bt))))
+      dplyr::filter(between(date, date_unique_bt[i+train_span], coalesce(date_unique_bt[i+train_span+push_span-1], max(date_unique_bt))))
     
     if(nrow(dt_test) == 0) break
     
@@ -137,6 +136,29 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
         label = dt_train[,target_y]
       )
     lgbm_test_dat <- data.matrix(dt_test %>% select(-c(`stock_cd`,`date`, contains('target'))))
+    
+    # Optimize Nround
+    if (i == 1) {
+      f = file(); sink(file=f)
+      cv_model = lgb.cv(params=list(learning_rate = 0.1,
+                                    bagging_freq = 1,
+                                    boosting = "gbdt",
+                                    tree_learner = "voting",
+                                    objective = "binary",
+                                    bagging_fraction = bagging_prop,
+                                    feature_fraction = feature_prop,
+                                    num_threads = num_threads_params,
+                                    seed = 1,
+                                    lambda_l2 = l2_param),
+                        data = lgbm_train_dat,
+                        nrounds = 1000,
+                        verbose = -1,
+                        nfold=5,
+                        early_stopping_rounds=100)
+      sink(); close(f)
+      num_rounds = round(cv_model$best_iter/10)*10
+      print(paste0("Optimal Nrounds : ", round(cv_model$best_iter/10)*10))
+    }
     
     # Start Training
     pred_mat <- matrix(nrow=nrow(dt_test), ncol=ensemble_n)
@@ -195,8 +217,6 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
       )
     
     ssl <- rbind(ssl, pred_df)
-    
-    k = k+1
     
     print(pred_df$date %>% unique())
     toc()
