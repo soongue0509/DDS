@@ -138,7 +138,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
     
     # Optimize Nround
     if (i == 1) {
-      #f = file(); sink(file=f)
+      f = file(); sink(file=f)
       cv_model = lgb.cv(params=list(learning_rate = 0.1,
                                     bagging_freq = 1,
                                     boosting = "gbdt",
@@ -154,7 +154,7 @@ modeling_func = function(df, target_y, title = "", num_threads_params=12, train_
                         verbose = -1,
                         nfold=5,
                         early_stopping_rounds=100)
-      #sink(); close(f)
+      sink(); close(f)
       num_rounds = round(cv_model$best_iter/10)*10
       print(paste0("Optimal Nrounds : ", round(cv_model$best_iter/10)*10))
     }
