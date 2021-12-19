@@ -87,6 +87,7 @@ sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
 
 #' @export
 ta_filtering <- function(ssl, min_transaction_amount = 1e8) {
+  library(RMySQL)
   conn <- dbConnect(MySQL(),
                     user = 'betterlife',
                     password = 'snail132',
@@ -119,8 +120,8 @@ exclude_issue_func <- function(ssl) {
     password = 'snail132',
     host = 'betterlife.duckdns.org',
     port = 1231,
-    dbname = 'stock_db'
-  )
+    dbname = 'stock_db')
+  
   issue_df <- dbGetQuery(conn, paste0("select * from stock_db.stock_issue where issue = 1 and date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")")) %>% prep_data()
   
   ssl_issue_excluded <-
