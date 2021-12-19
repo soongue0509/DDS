@@ -108,8 +108,6 @@ backtest_portfolio =
       filter(date >= ymd(start_date)) %>%
       filter(date <= ymd(end_date)) %>%
       mutate(kospi_cumret = cumprod(kospi+1)-1, kosdaq_cumret = cumprod(kosdaq+1)-1)
-    issue_df %<>%
-      mutate(date = ymd(date))
     safe_haven_price %<>%
       select(date, price=adj_close_price) %>%
       mutate(date = ymd(date))
@@ -440,8 +438,6 @@ backtest_portfolio_tic =
       filter(date >= ymd(start_date)) %>%
       filter(date <= ymd(end_date)) %>%
       mutate(kospi_cumret = cumprod(kospi+1)-1, kosdaq_cumret = cumprod(kosdaq+1)-1)
-    issue_df %<>%
-      mutate(date = ymd(date))
     safe_haven_price %<>%
       select(date, price=adj_close_price) %>%
       mutate(date = ymd(date))
