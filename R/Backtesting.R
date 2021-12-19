@@ -137,7 +137,7 @@ backtest_portfolio =
       }
       
       # Sector Neutral =====
-      ssl_sn <- 
+      ssl_sn <-
         sector_neutral(ssl = ssl,
                        SN_ratio = SN_ratio[l],
                        topN = topN[l],
