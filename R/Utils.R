@@ -111,7 +111,7 @@ ta_filtering <- function(ssl, min_transaction_amount = 1e8) {
 }
 
 #' @export
-exclude_issue <- function(ssl) {
+exclude_issue_func <- function(ssl) {
   library(RMySQL)
   conn <- dbConnect(
     MySQL(),
