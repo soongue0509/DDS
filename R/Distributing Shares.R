@@ -13,14 +13,15 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min
   print(paste0("Inv Date: ", inv_date))
   
   # Read Data
-  d_stock_price_temp <- 
+  conn <-
     dbConnect(MySQL(),
               user = 'betterlife',
               password = 'snail132',
               host = 'betterlife.duckdns.org',
               port = 1231 ,
-              dbname = 'stock_db') %>% 
-    dbGetQuery(paste0("select * from stock_adj_price where date = '", inv_date,"';")) %>%
+              dbname = 'stock_db')
+  d_stock_price_temp <- 
+    dbGetQuery(conn, paste0("select * from stock_adj_price where date = '", inv_date,"';")) %>%
     select(stock_cd, date, price = adj_close_price)
   
   if(exclude_issue) {
@@ -30,7 +31,7 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min
   ssl_temp =
     ssl %>%
     ta_filtering(min_transaction_amount) %>%
-    sector_neutral(SN_ratio, topN, pred_col) %>% 
+    sector_neutral(SN_ratio, topN, pred_col) %>%
     arrange(desc(get(pred_col))) %>%
     dplyr::slice(1:topN) %>%
     left_join(d_stock_price_temp %>% mutate(date=ymd(date)), by=c("stock_cd", "date")) %>%
@@ -66,7 +67,7 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min
   print("============================================================================")
   print(paste0("Surplus: ", surplus))
   
-  lapply(dbListConnections(dbDriver(drv = "MySQL")), dbDisconnect)
+  dbDisconnect(conn)
   
   if (view_method == "long") {
     return(final_result)
@@ -76,7 +77,6 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min
 }
 
 # SHAP for chosen stocks
-
 #' @export
 explain_why = function(shap, topN, macro_yn=FALSE) {
   
