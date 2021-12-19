@@ -130,7 +130,7 @@ backtest_portfolio =
       if (ymd(end_date) == max(ssl$date) | max(d_stock_price$date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
 
       # Remove Gwanli Stocks =====
-      if(!exclude_issue[l]) {
+      if(exclude_issue[l]) {
         ssl <- exclude_issue_func(ssl)
       }
 
@@ -460,7 +460,7 @@ backtest_portfolio_tic =
       if (ymd(end_date) == max(ssl$date) | max(d_stock_price$date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
 
       # Remove Gwanli Stocks =====
-      if(!exclude_issue[l]) {
+      if(exclude_issue[l]) {
         ssl <- exclude_issue_func(ssl)
       }
 
