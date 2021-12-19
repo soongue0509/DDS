@@ -3,7 +3,7 @@
 # How many shares
 
 #' @export
-how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min_transaction_amount=1e8, include_issue=T, view_method="long") {
+how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min_transaction_amount=1e8, exclude_issue=T, view_method="long") {
   Sys.setlocale("LC_CTYPE", "ko_KR.UTF-8")
   if(length(unique(ssl$date)) != 1) {
     stop("There must be only one date in SSL.")
@@ -23,8 +23,8 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min
     dbGetQuery(paste0("select * from stock_adj_price where date = '", inv_date,"';")) %>%
     select(stock_cd, date, price = adj_close_price)
   
-  if(!include_issue) {
-    ssl <- exclude_issue(ssl)
+  if(exclude_issue) {
+    ssl <- exclude_issue_func(ssl)
   }
   
   ssl_temp =
