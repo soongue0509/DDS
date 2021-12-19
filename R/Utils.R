@@ -111,6 +111,28 @@ ta_filtering <- function(ssl, min_transaction_amount = 1e8) {
 }
 
 #' @export
+exclude_issue <- function(ssl) {
+  library(RMySQL)
+  conn <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231,
+    dbname = 'stock_db'
+  )
+  issue_df <- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1") %>% prep_data()
+  
+  ssl_issue_excluded <-
+    ssl %>% 
+    left_join(issue_df, by=c("date", "stock_cd")) %>% 
+    filter(is.na(issue)) %>% 
+    select(-issue)
+  
+  return(ssl_issue_excluded)
+}
+
+#' @export
 auc_calc = function(ssl, df, target_y) {
   auc_df =
     ssl %>% 
