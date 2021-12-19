@@ -84,7 +84,7 @@ explain_why = function(shap, topN, macro_yn=FALSE) {
     stop("There must be only one date in SHAP data.")
   }
   
-  stock_db_connection <- dbConnect(
+  conn <- dbConnect(
     MySQL(),
     user = 'betterlife',
     password = 'snail132',
@@ -92,20 +92,20 @@ explain_why = function(shap, topN, macro_yn=FALSE) {
     port = 1231 ,
     dbname = 'stock_db'
   )
-  dbSendQuery(stock_db_connection, "SET NAMES utf8;")
-  dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
-  dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
+  dbSendQuery(conn, "SET NAMES utf8;")
+  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
   
   inv_date = str_replace_all(unique(shap$date),'-','')
   
-  stock_nm = dbGetQuery(stock_db_connection, paste0("select stock_cd, stock_nm from stock_market_sector where date = '", inv_date,"';"))
+  stock_nm = dbGetQuery(conn, paste0("select stock_cd, stock_nm from stock_market_sector where date = '", inv_date,"';"))
   
   if (macro_yn == TRUE) {
     temp <- 
       shap %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean)
   } else {
-    feature_list <- dbGetQuery(stock_db_connection, "select * from feature_list")
+    feature_list <- dbGetQuery(conn, "select * from feature_list")
     temp <- 
       shap %>% 
       select(date, stock_cd, variable, value, rfvalue, pred_mean) %>% 
@@ -130,6 +130,7 @@ explain_why = function(shap, topN, macro_yn=FALSE) {
     left_join(stock_nm, by="stock_cd") %>% 
     mutate(stock_cd_f = factor(paste0(stock_cd, ' / ', stock_nm)))
   
+  dbDisconnect(conn)
   plot_df %>% 
     group_by(stock_cd) %>% 
     top_n(6, abs(value)) %>% 
