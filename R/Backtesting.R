@@ -1117,14 +1117,14 @@ backtest_portfolio_vn =
   }
 
 #' @export
-return_tile = function(ssl_input, pred_col, topN) {
-
-  if(!"target_1m_return" %in% colnames(ssl_input)){
+return_tile = function(ssl, pred_col, topN, SN_ratio=0.3, min_transaction_amount=1e8, exclude_issue=F) {
+  
+  if(!"target_1m_return" %in% colnames(ssl)){
     stop("target_1m_return must exist in ssl")
   }
-
+  
   library(RMySQL)
-  stock_db_connection <- dbConnect(
+  conn <- dbConnect(
     MySQL(),
     user = 'betterlife',
     password = 'snail132',
@@ -1132,28 +1132,33 @@ return_tile = function(ssl_input, pred_col, topN) {
     port = 1231,
     dbname = 'stock_db'
   )
-  dbSendQuery(stock_db_connection, "SET NAMES utf8;")
-  dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
-  dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
-
+  dbSendQuery(conn, "SET NAMES utf8;")
+  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+  
   # Get KOSPI KOSDAQ
-  d_kospi_kosdaq = dbGetQuery(stock_db_connection, paste0("select * from stock_kospi_kosdaq where date >= '20051201'"))
-
+  d_kospi_kosdaq = dbGetQuery(conn, paste0("select * from stock_kospi_kosdaq where date >= '20051201'"))
+  dbDisconnect(conn)
+  
   # Get Market Updown
   market_updown <-
-    ssl_input %>%
+    ssl %>%
     select(date) %>%
     unique() %>%
     left_join(d_kospi_kosdaq %>% mutate(date = ymd(date)) %>% select(date, kospi, kosdaq), by ="date") %>%
     mutate(kospi = (lead(kospi)-kospi)/kospi,
            kosdaq = (lead(kosdaq)-kosdaq)/kosdaq) %>%
     mutate(market_avg = (kospi+kosdaq)/2) %>%
-    as_tibble() %>%
     na.omit()
-
+  
   # Top 30 and KOSPI/KOSDAQ ======
+  if(exclude_issue) {
+    ssl <- exclude_issue_func(ssl)
+  }
   pvm <-
-    ssl_input %>%
+    ssl %>%
+    ta_filtering(min_transaction_amount) %>% 
+    sector_neutral(SN_ratio, topN, pred_col) %>% 
     filter(date != max(date)) %>%
     group_by(date) %>%
     arrange(desc(get(pred_col)), .by_group = T) %>%
@@ -1163,7 +1168,7 @@ return_tile = function(ssl_input, pred_col, topN) {
     group_by(date) %>%
     summarize(portfolio_return = mean(target_1m_return)) %>%
     left_join(market_updown %>% select(date, kospi, kosdaq, market_avg), by="date")
-
+  
   pvm %>%
     mutate(date = fct_rev(factor(date))) %>%
     gather(gubun, value, -date) %>%
