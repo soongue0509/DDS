@@ -129,6 +129,8 @@ exclude_issue_func <- function(ssl) {
     filter(is.na(issue)) %>% 
     select(-issue)
   
+  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+  
   return(ssl_issue_excluded)
 }
 
