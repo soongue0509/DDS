@@ -4,7 +4,7 @@
 
 #' @export
 backtest_portfolio =
-  function(test_title="Portfolio Return", ssl_list, pred_col, topN, SN_ratio, min_transaction_amount, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_data = 'Y') {
+  function(test_title="Portfolio Return", ssl_list, pred_col, topN, SN_ratio, min_transaction_amount, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_price_data = T) {
     
     transaction_fee_rate = 0.00315
     start_date = str_replace_all(start_date, '-', '')
@@ -48,11 +48,17 @@ backtest_portfolio =
       }
     }
     if(length(include_issue) != length(ssl_list)) {
-      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
+      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use FALSE instead")
+    }
+    if(!is.logical(include_issue)) {
+      stop("include_issue parameter must be either TRUE or FALSE")
+    }
+    if(!is.logical(load_data)) {
+      stop("load_data parameter must be either TRUE or FALSE")
     }
     
     # Load Data if Needed =====
-    if(load_data == 'Y') {
+    if(load_data) {
       library(RMySQL)
       conn <- dbConnect(
         MySQL(),
@@ -123,8 +129,8 @@ backtest_portfolio =
       if (ymd(end_date) == max(ssl$date) | max(d_stock_price$date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
       
       # Remove Gwanli Stocks =====
-      if(include_issue[l] == 'N') {
-        ssl <- ssl %>% left_join(issue_df %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(issue)) %>% select(-issue)
+      if(!include_issue[l]) {
+        ssl <- exclude_issue(ssl)
       }
       
       # Sector Neutral =====
