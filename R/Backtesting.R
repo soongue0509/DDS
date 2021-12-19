@@ -1144,9 +1144,9 @@ return_tile = function(ssl_input, pred_col, topN) {
   # Top 30 and KOSPI/KOSDAQ ======
   pvm <-
     ssl_input %>%
+    filter(date != max(date)) %>%
     group_by(date) %>%
     arrange(desc(get(pred_col)), .by_group = T) %>%
-    filter(date <= Sys.Date()-30) %>%
     dplyr::slice(1:topN) %>%
     ungroup() %>%
     mutate(target_1m_return = ifelse(is.na(target_1m_return), -1, target_1m_return)) %>%
