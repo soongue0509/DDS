@@ -1107,7 +1107,7 @@ backtest_portfolio_vn =
   }
 
 #' @export
-return_tile = function(ssl_input, topN, pred_col) {
+return_tile = function(ssl_input, pred_col, topN) {
 
   if(!"target_1m_return" %in% colnames(ssl_input)){
     stop("target_1m_return must exist in ssl")
