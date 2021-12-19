@@ -311,12 +311,12 @@ backtest_portfolio =
 
 #' @export
 backtest_portfolio_tic =
-  function(test_title="Portfolio Return", ssl_list, pred_col, topN, SN_ratio, min_transaction_amount, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170102', end_date = '20201230', load_data = 'Y') {
-
+  function(test_title="Portfolio Return", ssl_list, pred_col, topN, SN_ratio, min_transaction_amount, include_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20170102', end_date = '20201230', load_price_data = T) {
+    
     transaction_fee_rate = 0.00315
     start_date = str_replace_all(start_date, '-', '')
     end_date = str_replace_all(end_date, '-', '')
-
+    
     ddsGetQuery <- function(query) {
       library(RMySQL)
       conn <- dbConnect(
@@ -334,7 +334,7 @@ backtest_portfolio_tic =
       lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
       return(result)
     }
-
+    
     # Check Arugments =====
     if(ymd(start_date) < '2017-01-02') {
       stop("Start Date must be greater than or equal to '20170102'")
@@ -342,14 +342,23 @@ backtest_portfolio_tic =
     if(ymd(end_date) > '2020-12-30') {
       stop("End Date must be less than or equal to '20201230'")
     }
-    if(length(topN) != length(ssl_list)) {
-      stop("topN length must be equal to ssl_list length")
-    }
     if(length(pred_col) != length(ssl_list)) {
       stop("pred_col length must be equal to ssl_list length")
     }
+    if(length(topN) != length(ssl_list)) {
+      stop("topN length must be equal to ssl_list length")
+    }
     if(length(SN_ratio) != length(ssl_list)) {
       stop("SN_ratio length must be equal to ssl_list length. If you don't wanted to use this argument, use 1 instead")
+    }
+    if(length(min_transaction_amount) != length(min_transaction_amount)) {
+      stop("min_transaction_amount length must be equal to ssl_list length.")
+    }
+    if(length(include_issue) != length(ssl_list)) {
+      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use FALSE instead")
+    }
+    if(!is.logical(include_issue)) {
+      stop("include_issue parameter must be either TRUE or FALSE")
     }
     if(length(upper_bound) != length(ssl_list)) {
       stop("upper_bound length must be equal to ssl_list length")
@@ -379,12 +388,12 @@ backtest_portfolio_tic =
         stop("weight_list length must be equal to ssl_list length. If you don't wanted to use this argument, use single NA instead")
       }
     }
-    if(length(include_issue) != length(ssl_list)) {
-      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use N instead")
+    if(!is.logical(load_price_data)) {
+      stop("load_price_data parameter must be either TRUE or FALSE")
     }
-
+    
     # Load Data if Needed =====
-    if(load_data == 'Y') {
+    if(load_price_data) {
       library(RMySQL)
       conn <- dbConnect(
         MySQL(),
@@ -397,22 +406,20 @@ backtest_portfolio_tic =
       dbSendQuery(conn, "SET NAMES utf8;")
       dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
       dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
-
+      
       # Stock Price
       d_stock_price <- dbGetQuery(conn, paste0("select * from stock_adj_price where date >= '", start_date ,"';"))
       # KOSPI & KOSDAQ
       d_kospi_kosdaq <- dbGetQuery(conn, "select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '20100101';")
-      # Gwanli Stocks
-      issue_df <- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
       # Safe Haven
       safe_haven_price <- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
-
+      
       # Disconnect MySQL Server
       lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
     }
-
+    
     tic()
-
+    
     # Prepare Data =====
     d_stock_price %<>%
       mutate(date=ymd(date),
@@ -438,7 +445,7 @@ backtest_portfolio_tic =
     safe_haven_price %<>%
       select(date, price=adj_close_price) %>%
       mutate(date = ymd(date))
-
+    
     # Start Simulation =====
     rets_total <- data.frame()
     for (l in 1:length(ssl_list)) {
@@ -453,39 +460,39 @@ backtest_portfolio_tic =
         arrange(desc(get(pred_col[l])), .by_group = TRUE) %>%
         mutate(stock_cd = str_pad(stock_cd, 6,side = c('left'), pad = '0')) %>%
         ungroup()
-
+      
       if (ymd(end_date) == max(ssl$date) | max(d_stock_price$date) == max(ssl$date)) ssl = ssl %>% filter(date != max(ssl$date))
-
+      
       # Remove Gwanli Stocks =====
-      if(include_issue[l] == 'N') {
-        ssl <- ssl %>% left_join(issue_df %>% unique(), by=c("date", "stock_cd")) %>% filter(is.na(issue)) %>% select(-issue)
+      if(!include_issue[l]) {
+        ssl <- exclude_issue(ssl)
       }
-
+      
       # Sector Neutral =====
       ssl_sn <-
         sector_neutral(ssl = ssl,
                        SN_ratio = SN_ratio[l],
                        topN = topN[l],
                        pred_col = pred_col[l])
-
+      
       # Create Objects =====
       rebalancing_dates <- unique(ssl$date)
-
+      
       rets_cum <- data.frame()
       market_win_vec <- c()
       risk_ratio_vec <- c()
-
+      
       # Work =====
       for(k in rebalancing_dates) {
         i = as.Date(k, origin = '1970-01-01')
         print(i)
-
+        
         # Calculate Each Stock Return =====
-
+        
         # Get Stock Price of Selected Stocks
         # 선택된 종목 틱데이터 호출
         tic_temp = ddsGetQuery(paste0("select date, stock_cd, trd_hr_mn, open_price, close_price from stock_minute_price where trd_hr_mn between '0900' and '1530' and date between ", str_replace_all(i, '-', ''), " and ", coalesce(str_replace_all(rebalancing_dates[which(rebalancing_dates==i)+1], '-', ''), '20201230'), " and stock_cd in ('", paste0(ssl_sn %>% filter(date == i) %>% slice_max(n=topN[l], order_by=get(pred_col[l])) %>% pull(stock_cd), collapse="','"),"')")) %>% mutate(date = ymd(date)) %>% group_by(stock_cd) %>% arrange(date, trd_hr_mn, .by_group=T) %>% ungroup()
-
+        
         rets_temp1 <-
           d_stock_price %>%
           # 1. 필요한 날짜만 필터링
@@ -499,26 +506,26 @@ backtest_portfolio_tic =
           group_by(stock_cd) %>%
           mutate(adj_close_price = ifelse(row_number()==1, lead(adj_open_price, 1), adj_close_price)) %>%
           mutate(price = NA)
-
+        
         for (ticker in unique(rets_temp1$stock_cd)) {
           # 손익절 가격 설정
           upper_price = ceiling(((rets_temp1 %>% filter(stock_cd == ticker) %>% filter(date == min(date)) %>% pull(adj_close_price)) * (1+upper_bound[l])) / (1-transaction_fee_rate))
           lower_price = ceiling(((rets_temp1 %>% filter(stock_cd == ticker) %>% filter(date == min(date)) %>% pull(adj_close_price)) * (1+lower_bound[l])) / (1-transaction_fee_rate))
-
+          
           # 필요한 틱데이터만 저장
           tic_ticker = tic_temp %>% filter(stock_cd == ticker) %>% filter(date != min(date))
-
+          
           # 수정주가
           tic_ratio1 = tic_temp %>% filter(stock_cd == ticker) %>% dplyr::slice(1) %>% pull(open_price)
           tic_ratio2 = rets_temp1 %>% filter(stock_cd == ticker) %>% dplyr::slice(1) %>% pull(adj_open_price)
           tic_ratio = tic_ratio1 / tic_ratio2
-
+          
           # 손익절 이벤트 첫 일어난 틱 추출
           upper_row = tic_ticker %>% mutate(adj_close_price = close_price / tic_ratio) %>% filter(adj_close_price >= upper_price) %>% dplyr::slice(1)
           lower_row = tic_ticker %>% mutate(adj_close_price = close_price / tic_ratio) %>% filter(adj_close_price <= lower_price) %>% dplyr::slice(1)
-
+          
           if (nrow(upper_row) == 1 & nrow(lower_row) == 1) {
-
+            
             if (ymd_hm(paste0(upper_row$date, " ", upper_row$trd_hr_mn)) < ymd_hm(paste0(lower_row$date, " ", lower_row$trd_hr_mn))) {
               sell_row = upper_row %>% mutate(price = upper_price) # A. 익절이 먼저 일어난 경우
             } else {
@@ -531,14 +538,14 @@ backtest_portfolio_tic =
           if (nrow(upper_row) == 0 & nrow(lower_row) == 1) sell_row = lower_row %>% mutate(price = lower_price)
           # E. 둘 다 안한 경우
           if (nrow(upper_row) == 0 & nrow(lower_row) == 0) sell_row = NA
-
+          
           # print("==============================")
           # print(paste0("Ticker : ", ticker, " / Upper : ", upper_price, " / Lower : ", lower_price))
           # print(upper_row)
           # print(lower_row)
           # print(sell_row)
           # print("")
-
+          
           if (sum(is.na(sell_row)) > 0) {
             rets_temp1 = rets_temp1 %>% mutate(price = ifelse(stock_cd == ticker, adj_close_price, price))
           } else {
@@ -551,7 +558,7 @@ backtest_portfolio_tic =
               select(-price_temp)
           }
         }
-
+        
         rets_temp <-
           rets_temp1 %>%
           ungroup() %>%
@@ -563,7 +570,7 @@ backtest_portfolio_tic =
         rets_temp[is.na(rets_temp)] = 0 # 상폐 처리
         ssc = ncol(rets_temp)-1
         names(rets_temp)[-1] <- paste0("stock", c(1 : ssc))
-
+        
         # Calculate Daily Return with Tax
         rets_base <- rets_temp
         for (s in 1:ssc) {
@@ -572,20 +579,20 @@ backtest_portfolio_tic =
           rets_base %<>% mutate(return_temp = ( (get(paste0('stock',s)) * (1-transaction_fee_rate)) -get(paste0('base',s)) ) / get(paste0('base',s)))
           colnames(rets_base)[ncol(rets_base)] <- paste0("return", s)
         }
-
+        
         rets_cum_temp <- rets_base %>% select(date, contains('return'))
-
+        
         # Calculate Portfolio Return =====
-
+        
         portfolio.returns <- c()
-
+        
         if (sum(is.na(weight_list[l][[1]])) == 1) {
           portfolio.returns <- rets_cum_temp %>% mutate(pr = rowMeans(rets_cum_temp %>% select(-date))) %>% pull(pr) %>% unname()
         } else {
           if(sum(is.na(weight_list[[l]])) > 0) stop("If weight_list is used, it cannot contain NA.")
           portfolio.returns <- rets_cum_temp %>% mutate(pr = rowWeightedMeans(rets_cum_temp %>% select(-date) %>% as.matrix(), w=as.numeric(wm %>% filter(dates == i) %>% select(-dates)))) %>% pull(pr) %>% unname()
         }
-
+        
         # Get Safe Haven Return =====
         if (sum(is.na(safe_haven[l][[1]])) == 1) {
           invisible()
@@ -597,13 +604,13 @@ backtest_portfolio_tic =
                    safe_haven_cumret = cumprod(safe_haven_return+1)-1) %>%
             select(date, safe_haven_cumret) %>%
             pull(safe_haven_cumret)
-
+          
           if(sum(is.na(safe_haven[[l]])) > 0) stop("If safe_haven is used, it cannot contain NA.")
           safe_haven_weight = safe_haven[[l]] %>% filter(date == i) %>% pull(w)
-
+          
           portfolio.returns <- portfolio.returns*(1-safe_haven_weight) + safe_haven.returns*safe_haven_weight
         }
-
+        
         # Save Cumulative Return =====
         if (nrow(rets_cum) == 0) {
           rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date, return = portfolio.returns))
@@ -611,10 +618,10 @@ backtest_portfolio_tic =
           rets_cum <- rbind(rets_cum, data.frame(date=rets_cum_temp$date[-1],
                                                  return=((1+portfolio.returns[-1])*(1+rets_cum$return[nrow(rets_cum)])-1)))
         }
-
+        
         # Extra Metrics =====
         # Monthly Win Ratio
-
+        
         market_win_yn <-
           d_kospi_kosdaq_cum %>%
           filter(date %in% rets_cum_temp$date) %>%
@@ -623,13 +630,13 @@ backtest_portfolio_tic =
           mutate(kospi_cumret = cumprod(1+kospi)-1, kosdaq_cumret = cumprod(1+kosdaq)-1) %>%
           mutate(market_cumret = (kospi_cumret+kosdaq_cumret)/2) %$%
           market_cumret[nrow(.)] < portfolio.returns[length(portfolio.returns)]
-
+        
         market_win_vec <- c(market_win_vec, market_win_yn)
-
+        
         # Risk Ratio
         risk_ratio_vec <- c(risk_ratio_vec, portfolio.returns[length(portfolio.returns)])
       }
-
+      
       # Post-work =====
       model_nm_temp =
         paste0(
@@ -646,18 +653,18 @@ backtest_portfolio_tic =
           "SR: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec) * sqrt(rebalancing_dates %>% substr(1, 4) %>% table() %>% median()), 2), ", ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
-
+      
       rets_total <- rbind(rets_total, rets_cum %>% mutate(model_nm = model_nm_temp))
       print(model_nm_temp)
     }
-
+    
     # Prepare Plot =====
     rets_total <- rbind(rets_total,
                         d_kospi_kosdaq_cum %>% select(date, return=kospi_cumret) %>% mutate(model_nm = "KOSPI") %>% filter(date <= max(rets_total$date)),
                         d_kospi_kosdaq_cum %>% select(date, return=kosdaq_cumret) %>% mutate(model_nm = "KOSDAQ") %>% filter(date <= max(rets_total$date)))
-
+    
     toc()
-
+    
     options(ggrepel.max.overlaps = Inf)
     rets_total %>% mutate(label = if_else(date == max(date), as.character(round(return,2)), NA_character_)) %>%
       ggplot(aes(x=ymd(date), y=return, col=model_nm)) +
