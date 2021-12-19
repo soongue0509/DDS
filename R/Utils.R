@@ -80,32 +80,32 @@ sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
     ungroup()
   
   # Disconnect MySQL Server
-  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+  dbDisconnect(conn)
   
   return(ssl_sn)
 }
 
 #' @export
 ta_filtering <- function(ssl, min_transaction_amount = 1e8) {
-  ta1w <- 
-    dbConnect(MySQL(),
-              user = 'betterlife',
-              password = 'snail132',
-              host = 'betterlife.duckdns.org',
-              port = 1231,
-              dbname = 'stock_db') %>% 
-    dbGetQuery(paste0("
+  conn <- dbConnect(MySQL(),
+                    user = 'betterlife',
+                    password = 'snail132',
+                    host = 'betterlife.duckdns.org',
+                    port = 1231,
+                    dbname = 'stock_db')
+    
+  ta1w <- dbGetQuery(conn, paste0("
                       select date, stock_cd, transaction_amount_1w_mean 
                       from stock_db.d_final_factor 
                       where date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")"))
-  
+    
   ssl_filtered <- 
     ssl %>% 
     left_join(ta1w %>% prep_data(), by=c("date", "stock_cd")) %>% 
     filter(transaction_amount_1w_mean >= min_transaction_amount) %>% 
     select(-transaction_amount_1w_mean)
   
-  lapply(dbListConnections(dbDriver(drv="MySQL")), dbDisconnect)
+  dbDisconnect(conn)
   
   return(ssl_filtered)
 }
@@ -129,7 +129,7 @@ exclude_issue_func <- function(ssl) {
     filter(is.na(issue)) %>% 
     select(-issue)
   
-  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+  dbDisconnect(conn)
   
   return(ssl_issue_excluded)
 }
@@ -202,11 +202,11 @@ load_price_data = function(start_date = '20150101') {
   safe_haven_price <<- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
   
   # Disconnect MySQL Server
-  lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+  dbDisconnect(conn)
 }
 
 #' @export
-upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_tries, load_data = 'Y') {
+upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_tries, load_price_data = TRUE) {
   
   if (num_tries <= 0) {
     stop("num_tries must be greater than 0")
@@ -218,7 +218,7 @@ upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_
     stop("second_plus must be greater than 0.05")
   }
   
-  if (load_data == 'Y') {
+  if (load_price_data) {
     library(RMySQL)
     conn <- dbConnect(
       MySQL(),
@@ -234,6 +234,7 @@ upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_
     d_stock_price <-
       dbGetQuery(conn, "select * from stock_adj_price where date >= '20170101';") %>% 
       mutate(date = ymd(date))
+    dbDisconnect(conn)
   }
   
   first_upper_bound_vec = seq(0.1, first_bound, by=0.05)
