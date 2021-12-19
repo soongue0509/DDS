@@ -175,7 +175,7 @@ topN_prec_calc = function(ssl, df, target_y, topN) {
 }
 
 #' @export
-load_data = function(start_date = '20150101') {
+load_bt_data = function(start_date = '20150101') {
   
   start_date <- str_replace_all(start_date, '-', '')
   
@@ -196,8 +196,6 @@ load_data = function(start_date = '20150101') {
   d_stock_price <<- dbGetQuery(conn, paste0("select * from stock_adj_price where date >= '", start_date ,"';"))
   # KOSPI & KOSDAQ
   d_kospi_kosdaq <<- dbGetQuery(conn, paste0("select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '", start_date, "';"))
-  # Gwanli Stocks
-  issue_df <<- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
   # Safe Haven
   safe_haven_price <<- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
   
