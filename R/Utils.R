@@ -175,7 +175,7 @@ topN_prec_calc = function(ssl, df, target_y, topN) {
 }
 
 #' @export
-load_bt_data = function(start_date = '20150101') {
+load_price_data = function(start_date = '20150101') {
   
   start_date <- str_replace_all(start_date, '-', '')
   
