@@ -23,11 +23,11 @@ ssl_mix <- function(ssl1, ssl2, ssl1_ratio) {
 #' @export
 ssl_intersect <- function(ssl1, ssl2, topN) {
   result = 
-    inner_join(ssl1 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl1_pred_mean = pred_mean, target_1m_return),
-               ssl2 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl2_pred_mean = pred_mean),
+    inner_join(ssl1 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl1 = pred_mean, target_1m_return),
+               ssl2 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl2 = pred_mean),
                by=c("date", "stock_cd")) %>% 
     ungroup() %>% 
-    select(date, stock_cd, ssl1_pred_mean, ssl2_pred_mean, target_1m_return)
+    select(date, stock_cd, ssl1, ssl2, target_1m_return)
   return(result)
 }
 
