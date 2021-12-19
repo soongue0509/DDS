@@ -70,8 +70,6 @@ backtest_portfolio =
       d_stock_price <- dbGetQuery(conn, paste0("select * from stock_adj_price where date >= '", start_date ,"';"))
       # KOSPI & KOSDAQ
       d_kospi_kosdaq <- dbGetQuery(conn, "select date, kospi, kosdaq from stock_kospi_kosdaq where date >= '20100101';")
-      # Gwanli Stocks
-      issue_df <- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1")
       # Safe Haven
       safe_haven_price <- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
       
