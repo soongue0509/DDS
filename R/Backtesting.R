@@ -53,12 +53,12 @@ backtest_portfolio =
     if(!is.logical(include_issue)) {
       stop("include_issue parameter must be either TRUE or FALSE")
     }
-    if(!is.logical(load_data)) {
-      stop("load_data parameter must be either TRUE or FALSE")
+    if(!is.logical(load_price_data)) {
+      stop("load_price_data parameter must be either TRUE or FALSE")
     }
     
     # Load Data if Needed =====
-    if(load_data) {
+    if(load_price_data) {
       library(RMySQL)
       conn <- dbConnect(
         MySQL(),
