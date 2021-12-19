@@ -10,14 +10,23 @@ backtest_portfolio =
     start_date = str_replace_all(start_date, '-', '')
     
     # Check Arugments =====
-    if(length(topN) != length(ssl_list)) {
-      stop("topN length must be equal to ssl_list length")
-    }
     if(length(pred_col) != length(ssl_list)) {
       stop("pred_col length must be equal to ssl_list length")
     }
+    if(length(topN) != length(ssl_list)) {
+      stop("topN length must be equal to ssl_list length")
+    }
     if(length(SN_ratio) != length(ssl_list)) {
       stop("SN_ratio length must be equal to ssl_list length. If you don't wanted to use this argument, use 1 instead")
+    }
+    if(length(min_transaction_amount) != length(min_transaction_amount)) {
+      stop("min_transaction_amount length must be equal to ssl_list length.")
+    }
+    if(length(include_issue) != length(ssl_list)) {
+      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use FALSE instead")
+    }
+    if(!is.logical(include_issue)) {
+      stop("include_issue parameter must be either TRUE or FALSE")
     }
     if(length(upper_bound) != length(ssl_list)) {
       stop("upper_bound length must be equal to ssl_list length")
@@ -46,12 +55,6 @@ backtest_portfolio =
       } else {
         stop("weight_list length must be equal to ssl_list length. If you don't wanted to use this argument, use single NA instead")
       }
-    }
-    if(length(include_issue) != length(ssl_list)) {
-      stop("include_issue length must be equal to ssl_list length. If you don't wanted to use this argument, use FALSE instead")
-    }
-    if(!is.logical(include_issue)) {
-      stop("include_issue parameter must be either TRUE or FALSE")
     }
     if(!is.logical(load_price_data)) {
       stop("load_price_data parameter must be either TRUE or FALSE")
