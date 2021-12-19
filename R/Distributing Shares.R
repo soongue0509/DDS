@@ -114,7 +114,7 @@ explain_why = function(shap, topN, macro_yn=FALSE) {
       select(-category)
   }
   
-  lapply(dbListConnections(dbDriver(drv = "MySQL")), dbDisconnect)
+  dbDisconnect(conn)
   
   plot_df <-
     temp %>% 
@@ -130,7 +130,6 @@ explain_why = function(shap, topN, macro_yn=FALSE) {
     left_join(stock_nm, by="stock_cd") %>% 
     mutate(stock_cd_f = factor(paste0(stock_cd, ' / ', stock_nm)))
   
-  dbDisconnect(conn)
   plot_df %>% 
     group_by(stock_cd) %>% 
     top_n(6, abs(value)) %>% 
