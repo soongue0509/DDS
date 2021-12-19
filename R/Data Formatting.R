@@ -99,5 +99,6 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
     mutate(date = ymd(date)) %>%
     as.data.frame()
   
+  dbDisconnect(conn)
   return(result)
 }
