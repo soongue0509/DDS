@@ -121,7 +121,7 @@ exclude_issue_func <- function(ssl) {
     port = 1231,
     dbname = 'stock_db'
   )
-  issue_df <- dbGetQuery(conn, "select * from stock_db.stock_issue where issue = 1") %>% prep_data()
+  issue_df <- dbGetQuery(conn, paste0("select * from stock_db.stock_issue where issue = 1 and date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")")) %>% prep_data()
   
   ssl_issue_excluded <-
     ssl %>% 
