@@ -83,7 +83,7 @@ backtest_portfolio =
       safe_haven_price <- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
 
       # Disconnect MySQL Server
-      lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+      dbDisconnect(conn)
     }
 
     tic()
@@ -329,7 +329,7 @@ backtest_portfolio_tic =
       dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
       dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
       result = dbGetQuery(conn, query)
-      lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+      dbDisconnect(conn)
       return(result)
     }
 
@@ -413,7 +413,7 @@ backtest_portfolio_tic =
       safe_haven_price <- dbGetQuery(conn, "select * from stock_db.stock_adj_price where stock_cd = '261240'")
 
       # Disconnect MySQL Server
-      lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+      dbDisconnect(conn)
     }
 
     tic()
@@ -735,7 +735,7 @@ backtest_portfolio_usa =
       d_snp500_nasdaq <- dbGetQuery(conn, "select date, `s&p_500_composite_pt` as snp500, `nasdaq_composite_pt` as nasdaq from macro_global where date >= '20150101';")
 
       # Disconnect MySQL Server
-      lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+      dbDisconnect(conn)
     }
 
     tic()
@@ -947,7 +947,7 @@ backtest_portfolio_vn =
       d_vn_hnx <- dbGetQuery(conn, "select date, `vn`, `hnx` from stock_vn.macro_emerging where date >= '20150101';")
 
       # Disconnect MySQL Server
-      lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+      dbDisconnect(conn)
     }
 
     tic()
