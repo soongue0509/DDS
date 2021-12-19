@@ -248,7 +248,7 @@ modeling_func = function(df, target_y, title = "", pred_start_date = '2015-01-01
                  field.types = c(date="varchar(10)", stock_cd="varchar(6)", pred_mean="double")
     )
     
-    lapply( dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+    dbDisconnect(conn)
   }
   return(ssl)
 }
@@ -535,7 +535,7 @@ market_updown_pred <- function(ssl_wo_macro, lookup_span) {
            kosdaq = (lead(kosdaq)-kosdaq)/kosdaq) %>% 
     mutate(korea = (kospi+kosdaq)/2) %>% 
     select(date, korea) # calculate korean market leading return
-  lapply(dbListConnections( dbDriver( drv = "MySQL")), dbDisconnect)
+  dbDisconnect(conn)
   
   rebalancing_dates = unique(korea_return$date)
   
