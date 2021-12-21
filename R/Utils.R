@@ -32,11 +32,11 @@ ssl_intersect <- function(ssl1, ssl2, topN) {
 }
 
 #' @export
-ssl_bind <- function(ssl1, ssl2, topN) {
+ssl_bind <- function(ssl1, ssl2, topN1, topN2) {
   result <-
     rbind(
-      ssl1 %>% select(date, stock_cd, pred_mean, target_1m_return) %>% group_by(date) %>% arrange(desc(pred_mean)) %>% dplyr::slice(1:topN) %>% ungroup() %>% mutate(gubun = 'ssl1'),
-      ssl2 %>% select(date, stock_cd, pred_mean, target_1m_return) %>% group_by(date) %>% arrange(desc(pred_mean)) %>% dplyr::slice(1:topN) %>% ungroup() %>% mutate(gubun = 'ssl2')
+      ssl1 %>% select(date, stock_cd, pred_mean, target_1m_return) %>% group_by(date) %>% arrange(desc(pred_mean)) %>% dplyr::slice(1:topN1) %>% ungroup() %>% mutate(gubun = 'ssl1'),
+      ssl2 %>% select(date, stock_cd, pred_mean, target_1m_return) %>% group_by(date) %>% arrange(desc(pred_mean)) %>% dplyr::slice(1:topN2) %>% ungroup() %>% mutate(gubun = 'ssl2')
     ) %>% 
     group_by(date, stock_cd) %>% 
     summarize(pred_mean = mean(pred_mean),
