@@ -146,12 +146,6 @@ auc_calc = function(ssl, df, target_y) {
     group_by(date) %>% 
     summarize(AUC = Metrics::auc(response, pred_mean))
   print(paste0("Average AUC : ", round(mean(auc_df$AUC, na.rm=T), 4)))
-  auc_plot =
-    ggplot(auc_df %>% filter(!is.na(AUC)), aes(x=date, y=AUC)) +
-    geom_line() +
-    theme_minimal() +
-    ggtitle("AUC")
-  print(auc_plot)
   return(auc_df)
 }
 
@@ -168,12 +162,6 @@ topN_prec_calc = function(ssl, df, target_y, topN) {
     dplyr::slice(1:topN) %>% 
     summarize(Precision = sum(response)/topN)
   print(paste0("Average Top", topN, " Precision : ", round(mean(prec_df$Precision, na.rm=T), 4)))
-  prec_plot =
-    ggplot(prec_df %>% filter(!is.na(Precision)), aes(x=date, y=Precision)) +
-    geom_line() +
-    theme_minimal() +
-    ggtitle(paste0("Top", topN, " Precision"))
-  print(prec_plot)
   return(prec_df)
 }
 
