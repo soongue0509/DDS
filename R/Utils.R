@@ -136,33 +136,63 @@ exclude_issue_func <- function(ssl) {
 }
 
 #' @export
-auc_calc = function(ssl, df, target_y) {
+auc_calc = function(ssl, target_y, by_month=FALSE) {
+  library(RMySQL)
+  conn <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231,
+    dbname = 'stock_db')
+  target_df <- dbGetQuery(conn, paste0("select date, stock_cd, ", target_y, " from stock_db.d_final_target where date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")")) %>% prep_data()
+  dbDisconnect(conn)
+  
   auc_df =
     ssl %>% 
+    filter(date != max(date)) %>% 
     select(date, stock_cd, pred_mean) %>% 
-    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
+    left_join(target_df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
     mutate(response = get(target_y)) %>% 
-    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
     group_by(date) %>% 
     summarize(AUC = Metrics::auc(response, pred_mean))
-  print(paste0("Average AUC : ", round(mean(auc_df$AUC, na.rm=T), 4)))
-  return(auc_df)
+  
+  if (by_month) {
+    return(auc_df)
+  } else {
+    return(mean(auc_df$AUC))
+  }
 }
 
 #' @export
-topN_prec_calc = function(ssl, df, target_y, topN) {
+topN_prec_calc = function(ssl, target_y, topN, by_month=FALSE) {
+  library(RMySQL)
+  conn <- dbConnect(
+    MySQL(),
+    user = 'betterlife',
+    password = 'snail132',
+    host = 'betterlife.duckdns.org',
+    port = 1231,
+    dbname = 'stock_db')
+  target_df <- dbGetQuery(conn, paste0("select date, stock_cd, ", target_y, " from stock_db.d_final_target where date in (", paste0(str_replace_all(unique(ssl$date),'-',''), collapse = ','), ")")) %>% prep_data()
+  dbDisconnect(conn)
+  
   prec_df =
     ssl %>% 
+    filter(date != max(date)) %>% 
     select(date, stock_cd, pred_mean) %>% 
-    left_join(df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
+    left_join(target_df %>% select(date, stock_cd, target_y), by=c("date", "stock_cd")) %>% 
     mutate(response = get(target_y)) %>% 
-    mutate(response = ifelse(is.na(response) & (date != max(date)), 0, response)) %>% 
     group_by(date) %>% 
     arrange(desc(pred_mean), .by_group=T) %>% 
     dplyr::slice(1:topN) %>% 
     summarize(Precision = sum(response)/topN)
-  print(paste0("Average Top", topN, " Precision : ", round(mean(prec_df$Precision, na.rm=T), 4)))
-  return(prec_df)
+
+  if (by_month) {
+    return(prec_df)
+  } else {
+    return(mean(prec_df$Precision))
+  }
 }
 
 #' @export
