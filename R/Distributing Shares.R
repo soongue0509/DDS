@@ -38,6 +38,7 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min
     mutate(each_stock_cap = seed_money / topN) %>%
     mutate(cnt_temp = floor(each_stock_cap / price)) %>%
     mutate(amt_temp = price * cnt_temp)
+  topN = nrow(ssl_temp)
   
   surplus = seed_money - sum(ssl_temp$amt_temp)
   
