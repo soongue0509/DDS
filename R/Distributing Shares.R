@@ -34,11 +34,15 @@ how_many_shares = function(ssl, seed_money, pred_col, topN=30, SN_ratio=0.3, min
     sector_neutral(SN_ratio, topN, pred_col) %>%
     arrange(desc(get(pred_col))) %>%
     dplyr::slice(1:topN) %>%
-    left_join(d_stock_price_temp %>% mutate(date=ymd(date)), by=c("stock_cd", "date")) %>%
+    left_join(d_stock_price_temp %>% mutate(date=ymd(date)), by=c("stock_cd", "date"))
+  
+  topN = nrow(ssl_temp)
+  
+  ssl_temp =
+    ssl_temp %>% 
     mutate(each_stock_cap = seed_money / topN) %>%
     mutate(cnt_temp = floor(each_stock_cap / price)) %>%
     mutate(amt_temp = price * cnt_temp)
-  topN = nrow(ssl_temp)
   
   surplus = seed_money - sum(ssl_temp$amt_temp)
   
