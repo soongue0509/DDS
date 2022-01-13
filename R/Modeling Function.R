@@ -139,6 +139,7 @@ modeling_func = function(df, target_y, title = "", pred_start_date = '2015-01-01
     # Optimize Nround
     if (i == 1) {
       #f = file(); sink(file=f)
+      set.seed(1)
       cv_model = lgb.cv(params=list(learning_rate = 0.1,
                                     bagging_freq = 1,
                                     boosting = "gbdt",
