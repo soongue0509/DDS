@@ -25,24 +25,31 @@ ssl_intersect <- function(ssl1, ssl2, topN) {
     inner_join(ssl1 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl1 = pred_mean, target_1m_return),
                ssl2 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date, stock_cd, ssl2 = pred_mean),
                by=c("date", "stock_cd")) %>% 
+    mutate(pred_mix = (ssl1+ssl2)/2) %>% 
+    group_by(date) %>% 
+    arrange(desc(pred_mix), .by_group = T) %>% 
     ungroup() %>% 
-    select(date, stock_cd, ssl1, ssl2, target_1m_return)
+    select(date, stock_cd, ssl1, ssl2, pred_mix, target_1m_return)
   return(result)
 }
 
 #' @export
 ssl_bind <- function(ssl1, ssl2, topN1, topN2) {
+  if (!'cnt' %in% colnames(ssl1)) ssl1 %<>% mutate(cnt = 1)
+  if (!'cnt' %in% colnames(ssl2)) ssl2 %<>% mutate(cnt = 1)
+  
   result <-
     rbind(
-      ssl1 %>% select(date, stock_cd, pred_mean, target_1m_return) %>% group_by(date) %>% arrange(desc(pred_mean)) %>% dplyr::slice(1:topN1) %>% ungroup() %>% mutate(gubun = 'ssl1'),
-      ssl2 %>% select(date, stock_cd, pred_mean, target_1m_return) %>% group_by(date) %>% arrange(desc(pred_mean)) %>% dplyr::slice(1:topN2) %>% ungroup() %>% mutate(gubun = 'ssl2')
+      ssl1 %>% select(date, stock_cd, pred_mean, target_1m_return, cnt) %>% group_by(date) %>% arrange(desc(pred_mean), .by_group=T) %>% dplyr::slice(1:topN1) %>% ungroup(),
+      ssl2 %>% select(date, stock_cd, pred_mean, target_1m_return, cnt) %>% group_by(date) %>% arrange(desc(pred_mean), .by_group=T) %>% dplyr::slice(1:topN2) %>% ungroup()
     ) %>% 
     group_by(date, stock_cd) %>% 
     summarize(pred_mean = mean(pred_mean),
               target_1m_return = unique(target_1m_return),
-              gubun = ifelse(n() == 2, 'both', gubun)) %>% 
-    ungroup() %>% 
-    arrange(date, stock_cd)
+              cnt = sum(cnt)) %>% 
+    group_by(date) %>% 
+    arrange(desc(cnt), desc(pred_mean), .by_group = T) %>% 
+    ungroup()
   return(result)
 }
 
