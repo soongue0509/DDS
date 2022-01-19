@@ -232,6 +232,20 @@ load_price_data = function(start_date = '20150101') {
 }
 
 #' @export
+skynet_connection = function() {
+  library(RMySQL)
+  conn <- dbConnect(MySQL(), user = 'betterlife', password = 'snail132', host = 'betterlife.duckdns.org', port = 1231, dbname = 'stock_db')
+  return(conn)
+}
+
+#' @export
+skynet_connection_setting = function() {
+  dbSendQuery(conn, "SET NAMES utf8;") 
+  dbSendQuery(conn, "SET CHARACTER SET utf8mb4;")
+  dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
+}
+
+#' @export
 upper_bound_calc = function(ssl, top_n, first_bound=0.50, second_plus=0.30, num_tries, load_price_data = TRUE) {
   
   if (num_tries <= 0) {
