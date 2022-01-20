@@ -86,7 +86,7 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
     step3 %>% 
     group_by(date) %>%
     mutate_at(vars(ends_with("ttm")), function(x){rank_norm(x)}) %>%
-    mutate_at(c('o_cfr', 'o_per', 'pbr', 'per', 'psr'), function(x){rank_norm(x)}) %>%
+    mutate_at(c('o_cfr', 'o_per', 'pbr', 'per', 'psr'), function(x){rank_norm(-1/x)}) %>%
     mutate(tr = rank_norm(tr),
            transaction_amount_1w_mean = rank_norm(transaction_amount_1w_mean),
            market_capitalization = rank_norm(market_capitalization)) %>%
