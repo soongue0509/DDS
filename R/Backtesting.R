@@ -267,7 +267,7 @@ backtest_portfolio =
           ifelse(sum(is.na(weight_list[l][[1]])) == 0, paste0(", Weight: Y  ["), "  ["),
           "Hit Ratio: ", round(sum(risk_ratio_vec > 0) / length(risk_ratio_vec), 2), ", ",
           "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
-          "MDD: ", data.frame(pr = risk_ratio_vec) %>% mutate(cumret = cumprod(pr+1)) %>% mutate(preceding_max = cummax(cumret)) %>% mutate(mdd = (cumret-preceding_max)/preceding_max) %>% pull(mdd) %>% min() %>% round(2), ", ",
+          "MDD: ", data.frame(cumret = rets_cum$return+1) %>% mutate(preceding_max = cummax(cumret)) %>% mutate(mdd = (cumret-preceding_max)/preceding_max) %>% pull(mdd) %>% min() %>% round(2), ", ",
           "SR: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec) * sqrt(rebalancing_dates %>% substr(1, 4) %>% table() %>% median()), 2), ", ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
