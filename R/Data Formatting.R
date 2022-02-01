@@ -92,7 +92,7 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
            market_capitalization = rank_norm(market_capitalization)) %>%
     ungroup()
   
-  # 5. Remove Unwanted Varialbes ===
+  # 5. Remove Redundant Factors ===
   step5 <-
     step4 %>% 
     select(-starts_with(c('cfo_ttm', 'cfi_ttm', 'cff_ttm', 'turnover_ttm', 'roe_ttm', 'roa_ttm', 'roc_ttm', 'op_margin_ttm')))
