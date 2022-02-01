@@ -232,9 +232,9 @@ load_price_data = function(start_date = '20150101') {
 }
 
 #' @export
-skynet_connection = function() {
+skynet_connection = function(dbname = 'stock_db') {
   library(RMySQL)
-  conn <- dbConnect(MySQL(), user = 'betterlife', password = 'snail132', host = 'betterlife.duckdns.org', port = 1231, dbname = 'stock_db')
+  conn <- dbConnect(MySQL(), user = 'betterlife', password = 'snail132', host = 'betterlife.duckdns.org', port = 1231, dbname = dbname)
   return(conn)
 }
 
