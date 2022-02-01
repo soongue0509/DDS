@@ -54,7 +54,7 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
     left_join(macro_df, by = "date") %>% 
     left_join(target_df, by = c("date", "stock_cd"))
   rm(factor_df); rm(target_df); rm(macro_df)
-
+  
   # 1. 재무 NA 비율 30% 이상 제거 === 
   step1 <-
     step0 %>% 
@@ -92,9 +92,14 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
            market_capitalization = rank_norm(market_capitalization)) %>%
     ungroup()
   
+  # 5. Remove Unwanted Varialbes ===
+  step5 <-
+    step4 %>% 
+    select(-starts_with(c('cfo_ttm', 'cfi_ttm', 'cff_ttm', 'turnover_ttm', 'roe_ttm', 'roa_ttm', 'roc_ttm', 'op_margin_ttm')))
+  
   # Prep Data ===
   result = 
-    step4 %>% 
+    step5 %>% 
     arrange(date, stock_cd) %>% 
     mutate(date = ymd(date)) %>%
     as.data.frame()
