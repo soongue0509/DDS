@@ -157,7 +157,7 @@ modeling_func = function(df, target_y, title = "", pred_start_date = '2015-01-01
                         early_stopping_rounds=100)
       #sink(); close(f)
       num_rounds = round(cv_model$best_iter/10)*10
-      print(paste0("Optimal Nrounds : ", round(cv_model$best_iter/10)*10))
+      print(paste0("Optimal Nrounds : ", num_rounds))
     }
     
     # Start Training
