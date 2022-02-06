@@ -225,7 +225,7 @@ modeling_func = function(df, target_y, title = "", pred_start_date = '2015-01-01
   ssl %<>%
     left_join(df %>% select(date, stock_cd, target_1m_return),
               by = c('date', 'stock_cd'))
-  saveRDS(ssl, paste0("ssl_",dt, "_",title, "_", target_y," (n", ensemble_n, ").RDS"))
+  saveRDS(ssl, paste0("ssl_",dt, "_",title, "_", target_y, "_t", train_span, "_n", ensemble_n, ".RDS"))
   saveRDS(shap_test_df %>% left_join(ssl %>% select(date, stock_cd, pred_mean), by=c("date", "stock_cd")), paste0("testSHAP_",dt, "_",title, "_", target_y, ".RDS"))
   
   if(load_to_db){
@@ -241,7 +241,7 @@ modeling_func = function(df, target_y, title = "", pred_start_date = '2015-01-01
     dbSendQuery(conn, "SET character_set_connection=utf8mb4;")
     dbSendQuery(conn, "SET GLOBAL local_infile=1;")
     dbWriteTable(conn,
-                 name = paste0("ssl_",dt, "_",title, "_", target_y,"_n", ensemble_n),
+                 name = paste0("ssl_",dt, "_",title, "_", target_y, "_t", train_span, "_n", ensemble_n),
                  value = ssl %>% select(date, stock_cd, pred_mean) %>% as.data.frame(),
                  row.names = FALSE,
                  overwrite = TRUE,
