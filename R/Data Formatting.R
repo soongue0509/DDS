@@ -97,7 +97,7 @@ get_modeling_data = function(period_gb = "Monthly", bizday = 3, extract_start_da
     step4 %>% 
     select(-starts_with(c('cfo_ttm', 'cfi_ttm', 'cff_ttm', 'turnover_ttm', 'roe_ttm', 'roa_ttm', 'roc_ttm', 'op_margin_ttm'))) %>% 
     select(-starts_with(c('call_interest_rate', 'cd_interest_rate', 'kor_interest_rate_3y', 'kor_interest_rate_5y', 'us_interest_rate_6m', 'us_interest_rate_3y', 'us_interest_rate_30y', 'm2_avg', 'unemployment_ratio'))) %>% 
-    select(-nasdaq_composite_pt)
+    select(-nasdaq_composite_pt, -bitcoin_usd)
   
   # Prep Data ===
   result = 
