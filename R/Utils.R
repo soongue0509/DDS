@@ -55,6 +55,42 @@ ssl_bind <- function(ssl1, ssl2, topN1, topN2) {
 }
 
 #' @export
+prior_mix = function(ssl1, ssl2, ssl1_ratio) {
+  result =
+    inner_join(
+      ssl1 %>% select(date1=date, stock_cd, ssl1=pred_mean, target_1m_return1=target_1m_return) %>% mutate(ym=substr(str_replace_all(date1, '-', ''), 1, 6)),
+      ssl2 %>% select(date2=date, stock_cd, ssl2=pred_mean, target_1m_return2=target_1m_return) %>% mutate(ym=substr(str_replace_all(date2, '-', ''), 1, 6)),
+      by=c("ym", "stock_cd")
+    ) %>%
+    mutate(pred_mean = ssl1*ssl1_ratio + ssl2*(1-ssl1_ratio)) %>%
+    mutate(date = if_else(date1 > date2, date1, date2),
+           target_1m_return = if_else(date1 > date2, target_1m_return1, target_1m_return2)) %>% 
+    select(date, stock_cd, ssl1, ssl2, pred_mean, target_1m_return) %>%
+    group_by(date) %>%
+    arrange(desc(pred_mean), .by_group = T) %>%
+    ungroup()
+  return(result)
+}
+
+#' @export
+prior_intersect <- function(ssl1, ssl2, topN) {
+  result = 
+    inner_join(
+      ssl1 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date1=date, stock_cd, ssl1=pred_mean, target_1m_return1=target_1m_return) %>% mutate(ym=substr(str_replace_all(date1, '-', ''), 1, 6)) %>% ungroup(),
+      ssl2 %>% group_by(date) %>% top_n(topN, pred_mean) %>% select(date2=date, stock_cd, ssl2=pred_mean, target_1m_return2=target_1m_return) %>% mutate(ym=substr(str_replace_all(date2, '-', ''), 1, 6)) %>% ungroup(),
+      by=c("ym", "stock_cd")
+    ) %>% 
+    mutate(pred_mean = (ssl1+ssl2)/2) %>% 
+    mutate(date = if_else(date1 > date2, date1, date2),
+           target_1m_return = if_else(date1 > date2, target_1m_return1, target_1m_return2)) %>%
+    select(date, stock_cd, ssl1, ssl2, pred_mean, target_1m_return) %>% 
+    group_by(date) %>% 
+    arrange(desc(pred_mean), .by_group = T) %>% 
+    ungroup()
+  return(result)
+}
+
+#' @export
 sector_neutral <- function(ssl, SN_ratio, topN, pred_col) {
   library(RMySQL)
   conn <- dbConnect(
