@@ -6,7 +6,7 @@
 backtest_portfolio =
   function(test_title="Portfolio Return", ssl_list, pred_col, topN, SN_ratio, min_transaction_amount, exclude_issue, upper_bound, lower_bound, safe_haven = NA, weight_list = NA, start_date = '20150106', end_date = '99991231', load_price_data = T) {
 
-    transaction_fee_rate = 0.00315
+    transaction_fee_rate = 0.0033
     start_date = str_replace_all(start_date, '-', '')
 
     # Check Arugments =====
