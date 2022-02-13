@@ -269,6 +269,7 @@ backtest_portfolio =
           "Win Ratio: ", round(sum(market_win_vec) / length(market_win_vec), 2), ", ",
           "MDD: ", data.frame(cumret = rets_cum$return+1) %>% mutate(preceding_max = cummax(cumret)) %>% mutate(mdd = (cumret-preceding_max)/preceding_max) %>% pull(mdd) %>% min() %>% round(2), ", ",
           "SR: ", round(mean(risk_ratio_vec) / sd(risk_ratio_vec) * sqrt(rebalancing_dates %>% substr(1, 4) %>% table() %>% median()), 2), ", ",
+          "CAGR ", round((rets_cum$return[nrow(rets_cum)]+1) ^ (1/(as.numeric(max(rets_cum$date)-min(rets_cum$date))/365))-1, 2),  ", ",
           "Return: ", rets_cum %>% filter(date == max(date)) %>% pull(return) %>% round(2), "]"
         )
 
