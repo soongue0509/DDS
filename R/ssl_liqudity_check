@@ -1,0 +1,188 @@
+# SSL Liquidity Checking Module
+
+# Initial settings including loading data from DB and SSL from local/cloud
+
+#' @export
+ssl_liquidity_check = function(ssl = ssl_int_kr,
+                               nation = 'KOR',
+                               topn = 30,
+                               start_date = '2017-01-01',
+                               unit = 1e08,
+                               specific_col = 'nxt_5d_ta_mean', # nxt_1d_ta_mean, prev_1d_ta_mean
+                               ta_limit = 50
+                               ){
+  
+
+  ## 각 date별로 topn 종목 필터링
+  ssl %<>% 
+    filter(date >= ymd(start_date)) %>% 
+    
+    select(date, stock_cd, pred_mean, target_1m_return) %>% 
+    
+    group_by(date) %>% 
+    arrange(desc(pred_mean), .by_group = T) %>% 
+    
+    group_by(date) %>% 
+    dplyr::slice(1 : topn) %>% 
+    
+    ungroup
+  
+  
+  ## 해당 nation의 거래대금 불러오기
+  if(nation == 'KOR'){
+    stock_db_connection <- dbConnect(MySQL(), user = "betterlife", password = "snail132", 
+                                     host = "betterlife.duckdns.org", port = 1231, dbname = "stock_db")
+    dbSendQuery(stock_db_connection, "SET NAMES utf8;")
+    dbSendQuery(stock_db_connection, "SET CHARACTER SET utf8mb4;")
+    dbSendQuery(stock_db_connection, "SET character_set_connection=utf8mb4;")
+    
+    # ssl 선택된 종목들만 불러오기
+    sdt <-
+      stock_db_connection %>% 
+      dbGetQuery(
+        paste0(
+          "select date, stock_cd, transaction_amount as ta from stock_db.stock_daily_technical ",
+          " where date >= ", as.integer(gsub("-","",start_date)) - 10000,
+          " and stock_cd in ('",
+          str_c(unique(ssl$stock_cd), collapse = "', '"),
+          "')"
+              )
+      ) %>% 
+      mutate(date = ymd(date))
+    
+    # sell day 기준으로 과거5일 거래대금, 미래3~5일 거래대금 구하기 
+    sdt %<>% 
+      arrange(stock_cd, date) %>% 
+      
+      group_by(stock_cd) %>% 
+      
+      # 과거 5일
+      mutate(prev_5d_ta_mean = rollapply(ta, 5, mean, na.rm=T, align = "right", fill = NA)) %>%
+      
+      # 미래 n일
+      mutate(nxt_1d_ta = lead(ta, 1)) %>%
+      mutate(nxt_3d_ta_mean = rollapply(ta, 3, mean, na.rm=T, align = "left", fill = NA)) %>%
+      mutate(nxt_5d_ta_mean = rollapply(ta, 3, mean, na.rm=T, align = "left", fill = NA)) %>%
+      
+      ungroup %>% 
+      
+      filter(date >= ymd(start_date)) %>% 
+      select(-ta)  
+    
+  } else if (nation == 'CHN'){
+    
+    unit = 1e08 / 170
+    
+    stock_cn_connection <- dbConnect(MySQL(), user = "betterlife", password = "snail132", 
+                                     host = "betterlife.duckdns.org", port = 1231, dbname = "stock_cn")
+    dbSendQuery(stock_cn_connection, "SET NAMES utf8;")
+    dbSendQuery(stock_cn_connection, "SET CHARACTER SET utf8mb4;")
+    dbSendQuery(stock_cn_connection, "SET character_set_connection=utf8mb4;")
+    
+    # ssl 선택된 종목들만 불러오기
+    sdt <-
+      stock_cn_connection %>% 
+      dbGetQuery(
+        paste0(
+          "select date, stock_cd, transaction_amount as ta from stock_cn.stock_daily_technical ",
+          " where date >= ", as.integer(gsub("-","",(ymd(start_date) - days(10)))),
+          " and stock_cd in ('",
+          str_c(unique(ssl$stock_cd), collapse = "', '"),
+          "')"
+        )
+      ) %>% 
+      mutate(date = ymd(date))
+    
+    # sell day 기준으로 과거5일 거래대금, 미래3~5일 거래대금 구하기 
+    sdt %<>% 
+      arrange(stock_cd, date) %>% 
+      
+      group_by(stock_cd) %>% 
+      
+      # 과거 5일
+      mutate(prev_5d_ta_mean = rollapply(ta, 5, mean, na.rm=T, align = "right", fill = NA)) %>%
+      
+      # 미래 n일
+      mutate(nxt_1d_ta = lead(ta, 1)) %>%
+      mutate(nxt_3d_ta_mean = rollapply(ta, 3, mean, na.rm=T, align = "left", fill = NA)) %>%
+      mutate(nxt_5d_ta_mean = rollapply(ta, 3, mean, na.rm=T, align = "left", fill = NA)) %>%
+      
+      ungroup %>% 
+      
+      filter(date >= ymd(start_date)) %>% 
+      select(-ta)  
+    
+    
+    
+    
+  }
+  
+  
+  ssl %<>% 
+    select(-pred_mean) %>% 
+    left_join(sdt,
+              by = c('date', 'stock_cd')) %>% 
+    select(-stock_cd)
+    
+  
+  
+  ## 전체 플랏
+  print(
+    ssl %>% 
+      select(date, target_1m_return,  ta = all_of(specific_col)) %>% 
+      mutate(ta = ta/unit) %>% 
+      
+      
+      group_by(date) %>% 
+      summarise(min_ta = min(ta),
+                median_ta = median(ta),
+                mean_rt = mean(target_1m_return)) %>% 
+      # mean_rt의 범위를 거래대금처럼 맞춰주기(한 플랏에 그리기 위함)
+      mutate(mean_rt = rescale(mean_rt, to = c(0, ta_limit))) %>% 
+      
+      
+      # 100억 이상은 보여주지 않기
+      mutate(min_ta = ifelse(min_ta >= ta_limit, ta_limit, min_ta),
+             median_ta = ifelse(median_ta >= ta_limit, ta_limit, median_ta)) %>% 
+      
+      
+      ggplot(aes(x=date)) +  
+      geom_bar(aes(y=median_ta), stat='identity', fill = '#F8766D', alpha=1)  + # geom_smooth() +
+      geom_bar(aes(y=min_ta), stat='identity',  fill = 'black', alpha=2) + 
+      geom_line(aes(y=mean_rt), color='blue') +
+      geom_point(aes(y=mean_rt), color='blue') + 
+      
+      ylab('ta') + 
+      labs(
+        title = specific_col,
+        subtitle = 'BLACK: minimum ta of each month  / RED: median ta of each month / BLUE: time series of return') + 
+      theme(
+        plot.title = element_text(size = 25, face = "bold"),
+        plot.subtitle = element_text(color = "black"),
+        axis.title.y = element_text(size=18, face="bold")
+      )
+        
+        )
+  
+  Sys.sleep(5)
+  
+  
+  ## 월별 플랏
+  print(
+    ssl %>% 
+      select(-target_1m_return) %>% 
+      reshape2::melt(id='date') %>% 
+      plyr::rename(c('value' = 'ta')) %>% 
+      mutate(ta = ta / unit) %>% 
+      mutate(ta = ifelse(ta >= ta_limit, ta_limit, ta)) %>% 
+      
+      ggplot(aes(x = variable, y=ta, fill=variable)) + 
+      geom_boxplot(alpha = 1) + 
+      facet_wrap(~ date) + 
+      theme(axis.title.x=element_blank(),
+            axis.text.x=element_blank(),
+            axis.ticks.x=element_blank())
+  )
+
+  
+}
